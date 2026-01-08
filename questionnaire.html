@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ερωτηματολόγιο του Chatbot "Εφυρα"</title>
+  <style>
+
+    :root{
+  --bg:#0a1a2b;
+  --bg2:#0e2239;
+  --primary:#1e90ff;
+  --primary-700:#0c67c2;
+  --muted:#8aa4c0;
+  --card:#102036;
+  --ring:rgba(255,255,255,.12);
+  --radius:18px;
+  --radius-lg:28px;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  --shadow-soft:0 6px 18px rgba(0,0,0,.25);
+}
+    html,body{height:100%}
+body{
+  margin:0;
+  font-family: Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  color:#eef5ff;
+  background: radial-gradient(1200px 600px at 70% 10%, #173656 0%, #0a1a2b 60%);
+  line-height:1.5;
+}
+
+.page-wrap{
+  min-height:100%;
+  padding: 48px 16px;
+}
+
+.container{
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+h1,h2,h3,h4{color:#eef5ff; margin:0 0 18px}
+h1{font-size: clamp(24px, 3vw, 38px); letter-spacing:.2px}
+
+/* “γυάλινο” panel όπως οι κάρτες */
+.panel{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border: 1px solid var(--ring);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 22px;
+}
+
+/* Μικρό subheading / περιγραφή */
+.lead{
+  color: var(--muted);
+  margin-top: -6px;
+  margin-bottom: 18px;
+}
+
+/* Κουμπιά σε ίδιο ύφος */
+.btn{
+  appearance:none;
+  border: 1px solid var(--ring);
+  background: rgba(255,255,255,.06);
+  color:#eef5ff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor:pointer;
+  font-weight:600;
+  box-shadow: var(--shadow-soft);
+  transition: transform .15s ease, background .15s ease;
+}
+.btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.09)}
+.btn.primary{
+  background: var(--primary);
+  border-color: transparent;
+}
+.btn.primary:hover{background: var(--primary-700)}
+
+/* Inputs / κάρτες ερώτησης */
+.field{
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--ring);
+  border-radius: 14px;
+  padding: 14px;
+  color:#eef5ff;
+}
+
+.field label{display:flex; gap:10px; align-items:center; cursor:pointer}
+.field input[type="checkbox"],
+.field input[type="radio"]{
+  width: 18px; height: 18px;
+  accent-color: var(--primary);
+}
+
+/* Wrapper */
+.questionnaire-container{
+  max-width:1100px;
+  margin:40px auto;
+  padding:24px;
+}
+
+/* Κάθε ερώτηση */
+.question{
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border:1px solid var(--ring);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:22px;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
+
+/* Κείμενο ερώτησης */
+.question h3,
+.question h4,
+.question p{
+  color:#eef5ff;
+}
+
+/* Επιλογές */
+.options{
+  display:flex;
+  gap:20px;
+  margin-top:14px;
+}
+
+.options label{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  background:rgba(255,255,255,.05);
+  border:1px solid var(--ring);
+  border-radius:14px;
+  cursor:pointer;
+}
+
+/* Κουμπιά */
+button{
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:14px;
+  padding:10px 18px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+button.secondary{
+
+  background:rgba(255,255,255,.1);
+}
+
+/* ΜΗΝ πειράζεις αυτό */
+.hidden{
+  display:none !important;
+}
+
+/* Προαιρετικές ερωτήσεις – πιο έντονη διάκριση */
+.question.optional{
+  opacity: 0.55;
+  border: 2px dashed rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.03);
+  box-shadow: none;
+}
+
+/* Τίτλος προαιρετικής */
+.question.optional h4::after{
+  content: " (προαιρετικό)";
+  font-weight: 400;
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+
+.page-wrapper{
+  width: 75%;
+  margin: 0 auto;
+}
+
+.questionnaire-footer{
+  margin-top: 40px;
+  padding: 16px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  border-top: 1px solid var(--ring);
+}
+
+  </style>
+</head>
+
+<body>
+   <div class="page-wrapper">
+
+  <h1>Ερωτηματολόγιο για Chatbot "Εφυρα"</h1>
+
+
+  <form id="questionnaire">
+
+    <!-- ΠΑΝΩ-ΠΑΝΩ: Χρησιμοποιήσατε το chatbot; -->
+    <section class="question" data-question="usedBotTop">
+      <p class="q-title">Ερώτηση</p>
+      <p class="q-text">Χρησιμοποιήσατε το chatbot στο πλαίσιο της δοκιμής;</p>
+
+      <div class="options">
+        <label><input type="checkbox" name="usedBot" value="yes"> Ναι</label>
+        <label><input type="checkbox" name="usedBot" value="no"> Όχι</label>
+      </div>
+    </section>
+
+    <!-- Αν Ναι: Πόσα σενάρια; -->
+    <section class="question hidden" id="scenariosSection" data-question="scenariosUsed">
+      <p class="q-title">Ερώτηση</p>
+      <p class="q-text">Πόσα σενάρια υλοποιήσατε με το chatbot κατά τη διάρκεια της δοκιμής;</p>
+
+      <div class="options">
+        <label><input type="checkbox" name="timesUsed" value="1"> 1 σενάριο</label>
+        <label><input type="checkbox" name="timesUsed" value="2-3"> 2–3 σενάρια</label>
+        <label><input type="checkbox" name="timesUsed" value=">3"> Πάνω από 3 σενάρια</label>
+      </div>
+    </section>
+<div id="optional-demographics" class="hidden">
+    <div class="question optional">
+  <h4>Φύλο (προαιρετικό)</h4>
+  <div class="options">
+    <label>
+      <input type="radio" name="gender" value="male">
+      Άρρεν
+    </label>
+    <label>
+      <input type="radio" name="gender" value="female">
+      Θήλυ
+    </label>
+  </div>
+</div>
+
+<div class="question optional">
+  <h4>Ηλικιακή Ομάδα (προαιρετικό)</h4>
+  <div class="options">
+    <label>
+      <input type="radio" name="age" value="18-30">
+      18–30
+    </label>
+    <label>
+      <input type="radio" name="age" value="31-45">
+      31–45
+    </label>
+    <label>
+      <input type="radio" name="age" value="46+">
+      46 και άνω
+    </label>
+  </div>
+</div>
+</div>
+
+    <!-- ΟΙ 15 ΕΡΩΤΗΣΕΙΣ (αρχικά κρυφές) -->
+    <div id="mainQuestions" class="hidden">
+
+      <!-- Ερώτηση 1 -->
+      <section class="question" data-question="q1">
+        <p class="q-title">Ερώτηση 1</p>
+        <p class="q-text">Η χρήση του chatbot με βοηθά να βρίσκω πιο γρήγορα τις πληροφορίες που χρειάζομαι.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q1" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q1" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q1" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q1" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q1" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 2 -->
+      <section class="question" data-question="q2">
+        <p class="q-title">Ερώτηση 2</p>
+        <p class="q-text">Το chatbot βελτιώνει την αποτελεσματικότητά, όταν αναζητώ υπηρεσίες ή πληροφορίες.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q2" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q2" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q2" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q2" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q2" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 3 -->
+      <section class="question" data-question="q3">
+        <p class="q-title">Ερώτηση 3</p>
+        <p class="q-text">Χρησιμοποιώντας το chatbot εξοικονομώ χρόνο σε σχέση με άλλους τρόπους εξυπηρέτησης.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q3" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q3" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q3" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q3" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q3" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 4 -->
+      <section class="question" data-question="q4">
+        <p class="q-title">Ερώτηση 4</p>
+        <p class="q-text">Η χρήση του chatbot είναι εύκολη για μένα.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q4" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q4" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q4" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q4" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q4" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 5 -->
+      <section class="question" data-question="q5">
+        <p class="q-title">Ερώτηση 5</p>
+        <p class="q-text">Η αλληλεπίδραση με το chatbot είναι κατανοητή και ξεκάθαρη.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q5" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q5" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q5" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q5" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q5" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 6 -->
+      <section class="question" data-question="q6">
+        <p class="q-title">Ερώτηση 6</p>
+        <p class="q-text">Μπορώ να χρησιμοποιήσω το chatbot χωρίς να χρειάζομαι βοήθεια.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q6" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q6" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q6" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q6" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q6" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 7 -->
+      <section class="question" data-question="q7">
+        <p class="q-title">Ερώτηση 7</p>
+        <p class="q-text">Άτομα του περιβάλλοντός μου θεωρούν ότι η χρήση του chatbot είναι χρήσιμη.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q7" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q7" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q7" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q7" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q7" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 8 -->
+      <section class="question" data-question="q8">
+        <p class="q-title">Ερώτηση 8</p>
+        <p class="q-text">Η χρήση του chatbot προτείνεται ή ενθαρρύνεται από τον φορέα/δήμο.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q8" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q8" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q8" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q8" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q8" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 9 -->
+      <section class="question" data-question="q9">
+        <p class="q-title">Ερώτηση 9</p>
+        <p class="q-text">Οι άνθρωποι στο περιβάλλον μου αντιμετωπίζουν θετικά τη χρήση του chatbot.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q9" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q9" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q9" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q9" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q9" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 10 -->
+      <section class="question" data-question="q10">
+        <p class="q-title">Ερώτηση 10</p>
+        <p class="q-text">Διαθέτω τα απαραίτητα μέσα (συσκευή, σύνδεση στο διαδίκτυο) για να χρησιμοποιώ το chatbot.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q10" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q10" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q10" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q10" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q10" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 11 -->
+      <section class="question" data-question="q11">
+        <p class="q-title">Ερώτηση 11</p>
+        <p class="q-text">Υπάρχει επαρκής καθοδήγηση ή υποστήριξη για τη χρήση του chatbot, όταν τη χρειάζομαι.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q11" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q11" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q11" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q11" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q11" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 12 -->
+      <section class="question" data-question="q12">
+        <p class="q-title">Ερώτηση 12</p>
+        <p class="q-text">Το chatbot είναι ενσωματωμένο με τρόπο που διευκολύνει την πρόσβασή μου στις υπηρεσίες.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q12" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q12" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q12" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q12" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q12" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 13 -->
+      <section class="question" data-question="q13">
+        <p class="q-title">Ερώτηση 13</p>
+        <p class="q-text">Σκοπεύω να χρησιμοποιώ το chatbot και στο μέλλον.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q13" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q13" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q13" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q13" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q13" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 14 -->
+      <section class="question" data-question="q14">
+        <p class="q-title">Ερώτηση 14</p>
+        <p class="q-text">Όταν χρειάζομαι πληροφορίες ή υπηρεσίες, σκοπεύω να χρησιμοποιώ το chatbot.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q14" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q14" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q14" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q14" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q14" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <!-- Ερώτηση 15 -->
+      <section class="question" data-question="q15">
+        <p class="q-title">Ερώτηση 15</p>
+        <p class="q-text">Το chatbot θα αποτελεί την πρώτη μου επιλογή για την αναζήτηση πληροφοριών ή υπηρεσιών.</p>
+        <div class="options">
+          <label><input type="checkbox" name="q15" value="1"> Διαφωνώ απόλυτα</label>
+          <label><input type="checkbox" name="q15" value="2"> Διαφωνώ</label>
+          <label><input type="checkbox" name="q15" value="3"> Ούτε συμφωνώ / ούτε διαφωνώ</label>
+          <label><input type="checkbox" name="q15" value="4"> Συμφωνώ</label>
+          <label><input type="checkbox" name="q15" value="5"> Συμφωνώ απόλυτα</label>
+        </div>
+      </section>
+
+      <div class="submit-wrap">
+        <button type="submit">Υποβολή</button>
+        <div class="sub-note">*(Η υποβολή αποθηκεύεται τοπικά στον browser.)*</div>
+      </div>
+    </div>
+
+    <div class="submit-wrap">
+  <button type="button" id="viewResultsBtn">Προβολή Αποτελεσμάτων (τοπικά)</button>
+  <button type="button" id="clearResultsBtn">Διαγραφή Αποτελεσμάτων</button>
+  <div id="resultsBox" style="margin-top:12px; display:none;"></div>
+
+</div>
+
+  </form>
+
+  <script>
+    // Επιτρέπει ΜΟΝΟ 1 checkbox ανά section
+    document.querySelectorAll('section.question').forEach(section => {
+      const checkboxes = section.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) {
+            checkboxes.forEach(other => {
+              if (other !== cb) other.checked = false;
+            });
+          }
+        });
+      });
+    });
+
+    // Helpers
+    function getCheckedValue(name){
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      return checked ? checked.value : null;
+    }
+    function clearGroup(name){
+      document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = false);
+    }
+
+    // Show/hide sections based on "usedBot"
+    const scenariosSection = document.getElementById('scenariosSection');
+    const mainQuestions = document.getElementById('mainQuestions');
+
+    document.querySelectorAll('input[name="usedBot"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const val = getCheckedValue('usedBot');
+
+        if (val === 'yes') {
+          scenariosSection.classList.remove('hidden');
+          mainQuestions.classList.remove('hidden');
+        } else {
+          // Όχι ή τίποτα
+          scenariosSection.classList.add('hidden');
+          mainQuestions.classList.add('hidden');
+
+          clearGroup('timesUsed');
+
+          // καθάρισμα των q1..q15
+          for (let i = 1; i <= 15; i++) clearGroup('q' + i);
+        }
+      });
+    });
+
+    // Υποβολή + Αποθήκευση τοπικά (LocalStorage)
+    document.getElementById('questionnaire').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      hideOptionalDemographics();   // ✅ ΝΕΑ ΓΡΑΜΜΗ
+
+      const submission = {
+        submittedAt: new Date().toISOString(),
+        usedBot: getCheckedValue('usedBot'),
+        scenarios: getCheckedValue('timesUsed'),
+        answers: {}
+      };
+
+      for (let i = 1; i <= 15; i++) {
+        submission.answers['q' + i] = getCheckedValue('q' + i);
+      }
+
+      const key = "questionnaire_submissions";
+      const existing = JSON.parse(localStorage.getItem(key) || "[]");
+      existing.push(submission);
+      localStorage.setItem(key, JSON.stringify(existing));
+
+      alert("Αποθηκεύτηκε τοπικά ✅");
+
+      // Reset + κρύψιμο
+      e.target.reset();
+      scenariosSection.classList.add('hidden');
+      mainQuestions.classList.add('hidden');
+    });
+
+    // Προβολή/Διαγραφή αποτελεσμάτων από LocalStorage
+const viewBtn = document.getElementById('viewResultsBtn');
+const clearBtn = document.getElementById('clearResultsBtn');
+const box = document.getElementById('resultsBox');
+
+viewBtn.addEventListener('click', () => {
+  hideOptionalDemographics();   // ✅ ΝΕΑ ΓΡΑΜΜΗ
+  const key = "questionnaire_submissions";
+  const data = JSON.parse(localStorage.getItem(key) || "[]");
+
+  box.style.display = "block";
+
+  if (!data.length) {
+    box.innerHTML = "<p>Δεν υπάρχουν αποθηκευμένα αποτελέσματα.</p>";
+    return;
+  }
+
+  const rows = data.map((sub, idx) => {
+    const a = sub.answers || {};
+    return `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${new Date(sub.submittedAt).toLocaleString()}</td>
+        <td>${sub.usedBot || ""}</td>
+        <td>${sub.scenarios || ""}</td>
+        <td>${a.q1 ?? ""}</td>
+        <td>${a.q2 ?? ""}</td>
+        <td>${a.q3 ?? ""}</td>
+        <td>${a.q4 ?? ""}</td>
+        <td>${a.q5 ?? ""}</td>
+        <td>${a.q6 ?? ""}</td>
+        <td>${a.q7 ?? ""}</td>
+        <td>${a.q8 ?? ""}</td>
+        <td>${a.q9 ?? ""}</td>
+        <td>${a.q10 ?? ""}</td>
+        <td>${a.q11 ?? ""}</td>
+        <td>${a.q12 ?? ""}</td>
+        <td>${a.q13 ?? ""}</td>
+        <td>${a.q14 ?? ""}</td>
+        <td>${a.q15 ?? ""}</td>
+      </tr>
+    `;
+  }).join("");
+
+  box.innerHTML = `
+    <div style="overflow:auto; border:1px solid #ddd; border-radius:10px;">
+      <table style="border-collapse:collapse; width:100%; min-width:1100px;">
+        <thead>
+          <tr>
+            <th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">#</th>
+            <th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">Ημ/νία</th>
+            <th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">Χρήση</th>
+            <th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">Σενάρια</th>
+            ${Array.from({length:15}, (_,i)=>`<th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">Q${i+1}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+});
+
+
+clearBtn.addEventListener('click', () => {
+  const key = "questionnaire_submissions";
+  localStorage.removeItem(key);
+  box.style.display = "block";
+  box.textContent = "Διαγράφηκαν όλα τα τοπικά αποτελέσματα.";
+});
+
+const usedBotRadios = document.querySelectorAll('input[name="usedBot"]');
+const optionalBox = document.getElementById('optional-demographics');
+
+usedBotRadios.forEach(radio => {
+  radio.addEventListener('change', () => {
+    if (radio.value === 'yes') {
+      optionalBox.classList.remove('hidden');
+    } else {
+      optionalBox.classList.add('hidden');
+    }
+  });
+});
+function hideOptionalDemographics() {
+  const optionalBox = document.getElementById('optional-demographics');
+  if (optionalBox) {
+    optionalBox.style.display = 'none';
+  }
+}
+  </script>
+</div>
+
+<footer class="questionnaire-footer">
+  Ερωτηματολόγιο για το Chatbot: «Εφύρα» – Demo για ακαδημαϊκή χρήση.
+</footer>
+
+</body>
+</html>
