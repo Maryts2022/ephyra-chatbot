@@ -615,14 +615,18 @@ async def ask(request: Request, body: AskBody):
     # --- ΝΕΟ ΚΟΜΜΑΤΙ: Γρήγορη αναζήτηση στο CSV ---
     query_lower = question.lower()
     for row in knowledge_base:
-        csv_q = row['question'].lower()
-        # Αν η ερώτηση του χρήστη περιέχει τη λέξη-κλειδί ή το αντίστροφο
-        if csv_q in query_lower or query_lower in csv_q:
-            return {
-                "answer": row['answer'],
-                "quality": "high",
-                "source": "csv"
-            }
+        # Μετατρέπουμε τις τιμές της γραμμής σε λίστα
+        values = list(row.values())
+        if len(values) >= 2:
+            csv_q = str(values[0]).lower()  # 1η στήλη: Ερώτηση
+            csv_a = values[1]               # 2η στήλη: Απάντηση
+            
+            if csv_q in query_lower or query_lower in csv_q:
+                return {
+                    "answer": csv_a,
+                    "quality": "high",
+                    "source": "csv"
+                }
     # ----------------------------------------------
 
     try:
