@@ -77,6 +77,61 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ================== AUTO-SYNC CSV TO DATABASE ==================
+def sync_csv_to_db():
+    try:
+        conn = psycopg2.connect(
+            dbname=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASS"),
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT", "5432")
+        )
+        cur = conn.cursor()
+
+        # 1. Δημιουργία πίνακα αν δεν υπάρχει (μαζί με το vector extension)
+        cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS public.kb_items_raw (
+                id SERIAL PRIMARY KEY,
+                question TEXT,
+                answer TEXT,
+                category TEXT,
+                embedding_384 vector(384)
+            );
+        """)
+
+        # 2. Φόρτωση μοντέλου για τα Embeddings
+        log.info("🔄 Syncing CSV to DB and generating embeddings...")
+        model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+        # 3. Καθαρισμός πίνακα για φρέσκο συγχρονισμό
+        cur.execute("TRUNCATE public.kb_items_raw;")
+
+        # 4. Ανέβασμα από το CSV
+        with open("QA_chatbot.csv", mode="r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                values = list(row.values())
+                if len(values) >= 2:
+                    q, a = values[0], values[1]
+                    emb = model.encode(q).tolist()
+                    cur.execute(
+                        "INSERT INTO kb_items_raw (question, answer, embedding_384) VALUES (%s, %s, %s)",
+                        (q, a, emb)
+                    )
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        log.info("✅ Database sync complete!")
+    except Exception as e:
+        log.error(f"❌ Sync failed: {e}")
+
+# Τρέχουμε τον συγχρονισμό κατά την εκκίνηση
+sync_csv_to_db()
+# ===============================================================
+
 # Mount static files
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
