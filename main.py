@@ -661,6 +661,17 @@ async def get_dashboard():
         return FileResponse(dashboard_path, media_type="text/html")
     return {"error": "Dashboard file not found"}
 
+@app.get("/questionnaire")
+async def get_questionnaire():
+    """Endpoint για την προβολή του Ερωτηματολογίου."""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Σιγουρέψου ότι το όνομα του αρχείου είναι ακριβώς questionnaire.html
+    quest_path = os.path.join(current_dir, "questionnaire.html")
+    
+    if os.path.exists(quest_path):
+        return FileResponse(quest_path, media_type="text/html")
+    return {"error": "Questionnaire file not found"}
+
 @app.post("/ask")
 @limiter.limit("30/minute")
 async def ask(request: Request, body: AskBody):
