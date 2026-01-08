@@ -181,7 +181,7 @@ def init_feedback_table():
         cursor = conn.cursor()
         
         # ΠΡΟΣΟΧΗ: Διαγράφουμε τον παλιό πίνακα για να τον ξαναφτιάξουμε σωστά
-        cursor.execute("DROP TABLE IF EXISTS chatbot_feedback CASCADE;") 
+        #cursor.execute("DROP TABLE IF EXISTS chatbot_feedback CASCADE;") 
         
         # Δημιουργία με τα ονόματα που θέλουν οι συναρτήσεις σου (timestamp και ip_address)
         cursor.execute("""
