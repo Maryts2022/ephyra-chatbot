@@ -689,15 +689,16 @@ async def ask(request: Request, body: AskBody):
         # Παίρνουμε context από τη βάση (Semantic Search)
         db_context_docs = retrieve_context(cursor, question, top_k=body.top_k)
         
-        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ (Διορθωμένο για απλά κείμενα)
+        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ (Απλή και Σίγουρη)
         db_context_text = ""
         for doc in db_context_docs:
-            # Επειδή το doc είναι ήδη κείμενο (string), το προσθέτουμε απευθείας
-            db_context_text += f"\nΠληροφορία: {doc}\n"
+            # Μετατρέπουμε το doc σε string για σιγουριά και το προσθέτουμε
+            db_context_text += f"\nΠληροφορία: {str(doc)}\n"
         
         all_context = csv_context + "\n" + db_context_text
         
         # 5. ΤΟ LLM ΦΤΙΑΧΝΕΙ ΤΗΝ ΕΞΥΠΝΗ ΑΠΑΝΤΗΣΗ
+        # Εδώ η Εφύρα θα διαβάσει τα πάντα και θα απαντήσει έξυπνα
         answer, metadata = await generate_answer_with_rag(question, all_context, current_lang)
         
         return {
