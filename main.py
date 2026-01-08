@@ -19,18 +19,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-
-app = FastAPI()
-#Εδώ ακριβώς κόλλησε το mount:
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-
-from openai import OpenAI
 from elevenlabs.client import ElevenLabs
 import re
 
@@ -64,7 +57,7 @@ from openai import OpenAI
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # ================== FastAPI Setup ==================
 app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.0.0")
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -610,22 +603,31 @@ async def health():
 @app.post("/ask")
 @limiter.limit("30/minute")
 async def ask(request: Request, body: AskBody):
-    """
-    Main endpoint: Implements full RAG pipeline
-    1. RETRIEVE: Get context from semantic + keyword search
-    2. AUGMENT: Format context
-    3. GENERATE: Use Gemini to create natural response
-    """
-    conn = None
     current_lang = body.lang or detect_user_lang(body.messages[-1].content if body.messages else "")
     question = (body.messages[-1].content if body.messages else "").strip()
 
-    try:
-        if not question:
+    if not question:
+        return {
+            "answer": "❌ No question received" if current_lang == 'en' else "❌ Δεν έλαβα ερώτηση",
+            "quality": "error"
+        }
+
+    # --- ΝΕΟ ΚΟΜΜΑΤΙ: Γρήγορη αναζήτηση στο CSV ---
+    query_lower = question.lower()
+    for row in knowledge_base:
+        csv_q = row['question'].lower()
+        # Αν η ερώτηση του χρήστη περιέχει τη λέξη-κλειδί ή το αντίστροφο
+        if csv_q in query_lower or query_lower in csv_q:
             return {
-                "answer": "❌ No question received" if current_lang == 'en' else "❌ Δεν έλαβα ερώτηση",
-                "quality": "error"
+                "answer": row['answer'],
+                "quality": "high",
+                "source": "csv"
             }
+    # ----------------------------------------------
+
+    try:
+        # Εδώ συνεχίζει ο υπόλοιπος κώδικας σου (Gemini, RAG κτλ)
+        # ...
         
         # Check for direct answers
         direct_answer = get_direct_answer(question)
