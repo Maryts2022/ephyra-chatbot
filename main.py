@@ -15,7 +15,7 @@ import json
 import psycopg2
 import psycopg2.pool
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -128,8 +128,7 @@ def sync_csv_to_db():
     except Exception as e:
         log.error(f"❌ Sync failed: {e}")
 
-# Τρέχουμε τον συγχρονισμό κατά την εκκίνηση
-sync_csv_to_db()
+
 # ===============================================================
 
 # Mount static files
@@ -636,15 +635,16 @@ async def generate_answer_with_rag(question: str, context_docs: List[Dict],
 # ================== Endpoints ==================
 
 @app.get("/")
-async def root():
-    """Serve HTML UI."""
+async def root(background_tasks: BackgroundTasks):
+    # Αυτό λέει στην Python: "Δείξε το site αμέσως και ξεκίνα τον συγχρονισμό από πίσω"
+    background_tasks.add_task(sync_csv_to_db) 
+    
     current_dir = os.path.dirname(os.path.abspath(__file__))
     html_path = os.path.join(current_dir, "ui_chatbot.html")
     
     if os.path.exists(html_path):
         return FileResponse(html_path, media_type="text/html")
-    
-    return {"message": "Ephyra Chatbot API v3.0.0 - RAG Edition"}
+    return {"message": "Ephyra is warming up!"}
 
 @app.get("/health")
 async def health():
