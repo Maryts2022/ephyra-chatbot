@@ -507,7 +507,7 @@ def retrieve_context(cursor, question: str, top_k: int = 10) -> List[Dict]:
     # Χρησιμοποιούμε το top_k που έχει οριστεί (συνήθως 10-15 για το GPT)
     ranked = sorted(all_results.values(), key=lambda x: x.get('similarity', 0), reverse=True)[:top_k]
     
-    # ΕΠΙΣΤΡΟΦΗ ΤΗΣ ΛΙΣΤΑΣ ΣΤΗ ΣΥΝΑΡΤΗΣΗ generate_answer_with_rag
+    # ΕΠΙΣΤΡΟΦΗ ΤΗΣ ΛΙΣΤΑΣ ΣΤΗ ΣΥΝΑΡΤΗΣΗ generate_answer_with_ragσ
     return ranked
 
 def format_context(docs: List[Dict], lang: str = "el") -> str:
@@ -530,20 +530,19 @@ def format_context(docs: List[Dict], lang: str = "el") -> str:
     
     return formatted
 
-async def generate_answer_with_rag(question: str, context_docs: List[Dict], 
-                                   lang: str = "el", conversation_history: List[Message] = None) -> Tuple[str, Dict]:
+async def generate_answer_with_rag(question: str, context_str: str, 
+                                   lang: str = "el", conversation_history: List[Dict] = None) -> Tuple[str, Dict]:
     """
     Παραγωγή AI απάντησης με πλήρη αξιοποίηση του GPT-4o-mini και των 88 πληροφοριών.
     """
-    log.info(f"🤖 Generating AI response in '{lang}' (Found {len(context_docs)} relevant docs)...")
+    # ΔΙΟΡΘΩΣΗ: Χρησιμοποιούμε το context_str που έρχεται ως όρισμα
+    log.info(f"🤖 Generating AI response in '{lang}'...")
     
-    # 1. Βελτιωμένο Formatting του Context για να το "βλέπει" καθαρά το GPT
-    if not context_docs:
-        context_str = "Δεν βρέθηκαν σχετικά έγγραφα στη βάση δεδομένων."
+    # Αν το context_str είναι κενό, βάζουμε ένα default μήνυμα
+    if not context_str or not context_str.strip():
+        current_context = "Δεν βρέθηκαν σχετικά έγγραφα στη βάση δεδομένων."
     else:
-        # Ενώνουμε τις πληροφορίες σε μια καθαρή λίστα
-         # Μετατροπή των docs σε κείμενο που διαβάζει η AI
-          context_str = "\n".join([f"Ερώτηση: {d.get('question', '')} - Απάντηση: {d.get('answer', '')}" for d in context_docs])
+        current_context = context_str
 
     # 2. Το "Ελεύθερο" αλλά "Πειθαρχημένο" System Prompt
     if lang == "el":
@@ -575,7 +574,6 @@ async def generate_answer_with_rag(question: str, context_docs: List[Dict],
     "5. ΑΓΝΩΣΤΗ ΠΛΗΡΟΦΟΡΙΑ: Αν η πληροφορία δεν υπάρχει καθόλου στις 88 εγγραφές, μην μαντέψεις. "
     "Απάντησε ευγενικά ότι δεν διαθέτεις τη συγκεκριμένη πληροφορία και παρέπεμψε στο korinthos.gr ή στο 2741361000."
 )
-        
     else:
         system_prompt = (
             "You are Ephyra, the advanced AI assistant for the Municipality of Corinth. "
@@ -607,30 +605,28 @@ async def generate_answer_with_rag(question: str, context_docs: List[Dict],
         
 
     try:
-        # 3. Κλήση OpenAI με GPT-4o-mini
+        # Κλήση OpenAI
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "system", "content": f"ΔΙΑΘΕΣΙΜΕΣ ΠΛΗΡΟΦΟΡΙΕΣ (CONTEXT):\n{context_str}"},
+                {"role": "system", "content": f"CONTEXT:\n{current_context}"},
                 {"role": "user", "content": question}
             ],
-            temperature=0.7 # Για φυσικότητα στον λόγο
+            temperature=0.7
         )
         answer = response.choices[0].message.content.strip()
         
-        # 4. Metadata για το UI
+        # Απλοποιημένα Metadata για να μην έχουμε σφάλματα 'get'
         metadata = {
-            "documents_used": len(context_docs),
-            "avg_similarity": sum(d.get('similarity', 0) for d in context_docs) / len(context_docs) if context_docs else 0,
-            "sources": list(set(d.get('source', 'Βάση Δεδομένων') for d in context_docs))
+            "documents_used": 1 if context_str.strip() else 0,
+            "source": "hybrid_knowledge_base"
         }
         return answer, metadata
 
     except Exception as e:
         log.error(f"❌ OpenAI Error: {e}")
-        error_msg = "Λυπάμαι, παρουσιάστηκε σφάλμα στη σύνδεση με το AI." if lang == "el" else "Sorry, an AI error occurred."
-        return error_msg, {"error": str(e)}
+        return "Λυπάμαι, δεν μπόρεσα να επεξεργαστώ την απάντηση.", {}
 
 # ================== Endpoints ==================
 
@@ -670,7 +666,7 @@ async def ask(request: Request, body: AskBody):
             "quality": "error"
         }
 
-    # 2. ΣΥΛΛΟΓΗ ΠΛΗΡΟΦΟΡΙΩΝ ΑΠΟ CSV (Χωρίς return!)
+    # 2. ΣΥΛΛΟΓΗ ΠΛΗΡΟΦΟΡΙΩΝ ΑΠΟ CSV
     csv_context = ""
     query_lower = question.lower()
     for row in knowledge_base:
@@ -684,21 +680,26 @@ async def ask(request: Request, body: AskBody):
     try:
         # 3. ΣΥΝΔΕΣΗ ΚΑΙ SEARCH ΣΤΗ ΒΑΣΗ
         conn = get_db_conn() 
-        cursor = conn.cursor()
+        cursor = conn.cursor() # Δημιουργούμε τον cursor για να μη βγάζει σφάλμα
         
         # Παίρνουμε context από τη βάση (Semantic Search)
         db_context_docs = retrieve_context(cursor, question, top_k=body.top_k)
+        cursor.close() # Κλείνουμε τον cursor αφού τελειώσουμε
         
-        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ (Απλή και Σίγουρη)
+        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ
         db_context_text = ""
-        for doc in db_context_docs:
-            # Μετατρέπουμε το doc σε string για σιγουριά και το προσθέτουμε
-            db_context_text += f"\nΠληροφορία: {str(doc)}\n"
+        if db_context_docs:
+            for doc in db_context_docs:
+                if isinstance(doc, dict):
+                    q = doc.get('question', '')
+                    a = doc.get('answer', '')
+                    db_context_text += f"\nΠληροφορία: {q} - {a}\n"
+                else:
+                    db_context_text += f"\nΠληροφορία: {str(doc)}\n"
         
         all_context = csv_context + "\n" + db_context_text
         
         # 5. ΤΟ LLM ΦΤΙΑΧΝΕΙ ΤΗΝ ΕΞΥΠΝΗ ΑΠΑΝΤΗΣΗ
-        # Εδώ η Εφύρα θα διαβάσει τα πάντα και θα απαντήσει έξυπνα
         answer, metadata = await generate_answer_with_rag(question, all_context, current_lang)
         
         return {
@@ -708,127 +709,13 @@ async def ask(request: Request, body: AskBody):
         }
 
     except Exception as e:
-        log.error(f"❌ Error: {e}")
+        log.error(f"❌ Error in /ask: {e}")
         return {"answer": "Λυπάμαι, παρουσιάστηκε ένα πρόβλημα.", "quality": "error"}
     finally:
         if conn:
             return_db_conn(conn)
     # ----------------------------------------------
-
-    try:
-        # Εδώ συνεχίζει ο υπόλοιπος κώδικας σου (Gemini, RAG κτλ)
-        # ...
-        
-        # Check for direct answers
-        direct_answer = get_direct_answer(question)
-        if direct_answer:
-            log.info(f"✓ Direct answer matched: {question}")
-            return direct_answer
-        
-        # Check for capabilities question
-        if is_capabilities_question(question):
-            log.info(f"ℹ️ Capabilities question detected: {question}")
-            capabilities = get_capabilities_response(current_lang)
-            return {
-                "answer": capabilities,
-                "quality": "capabilities",
-                "context_found": True,
-                "confidence": 1.0
-            }
-        
-        # Check for greeting
-        if is_greeting(question):
-            if len(body.messages) <= 1:
-                log.info(f"👋 Greeting detected on first message: {question}")
-                if current_lang == 'en':
-                    greeting = "Hello! I'm Ephyra, the professional AI assistant for the Municipality of Corinth. How can I help you today? 😊"
-                else:
-                    greeting = "Γεια σας! Είμαι η Εφύρα, η επαγγελματική AI βοηθός του Δήμου Κορινθίων. Πώς μπορώ να σας βοηθήσω σήμερα; 😊"
-                
-                return {
-                    "answer": greeting,
-                    "quality": "greeting",
-                    "context_found": False,
-                    "confidence": 1.0
-                }
-            else:
-                log.info(f"👋 Greeting detected (not first message, skipping greeting response)")
-                pass
-        
-        # Check for out of scope
-        if is_out_of_scope(question):
-            log.info(f"⛔ Out of scope: {question[:50]}")
-            if current_lang == 'en':
-                msg = ("I'm sorry, I only assist with questions about the Municipality of Corinth. "
-                      "For other topics, please ask something related to municipal services.")
-            else:
-                msg = ("Λυπάμαι, βοηθώ μόνο με ερωτήσεις σχετικά με το Δήμο Κορινθίων. "
-                      "Για άλλα θέματα, παρακαλώ ρωτήστε κάτι σχετικό με τις δημοτικές υπηρεσίες.")
-            
-            return {
-                "answer": msg,
-                "quality": "out_of_scope",
-                "context_found": False,
-                "confidence": 0.0
-            }
-        
-        # ==================== RAG PIPELINE ====================
-        # Ανοίγουμε τη σύνδεση ΜΕΣΑ στο try
-        conn = get_db_conn()
-        cursor = conn.cursor()
-        
-        # Step 1: RETRIEVE context
-        context_docs = retrieve_context(cursor, question, top_k=body.top_k)
-        
-        # Κλείνουμε τον cursor αμέσως μετά την ανάκτηση
-        cursor.close()
-        
-        # Step 3: GENERATE answer
-        answer, metadata = await generate_answer_with_rag(
-            question, 
-            context_docs, 
-            current_lang,
-            body.messages
-        )
-        
-        # Calculate final confidence
-        confidence = metadata.get('avg_similarity', 0.0) if context_docs else 0.0
-        
-        return {
-            "answer": answer,
-            "quality": "generated",
-            "context_found": len(context_docs) > 0,
-            "confidence": float(confidence),
-            "documents_used": metadata.get('documents_used', 0),
-            "sources": metadata.get('sources', [])
-        }
-    
-    except Exception as e:
-        error_msg_full = f"❌ ERROR in /ask: {str(e)}"
-        log.exception(error_msg_full)
-        print(f"\n🔴 CRITICAL ERROR: {error_msg_full}")
-        print(f"   Exception type: {type(e).__name__}")
-        print(f"   Question was: {question if 'question' in locals() else 'N/A'}")
-        import traceback
-        traceback.print_exc()
-        
-        if current_lang == 'en':
-            error_msg = "An unexpected error occurred. Please try again."
-        else:
-            error_msg = "Παρουσιάστηκε απρόσμενο σφάλμα. Παρακαλώ δοκιμάστε ξανά."
-        
-        return {
-            "answer": error_msg,
-            "quality": "error",
-            "context_found": False,
-            "confidence": 0.0
-        }
-    
-    finally:
-        # Η επιστροφή της σύνδεσης γίνεται ΠΑΝΤΑ εδώ
-        if conn:
-            return_db_conn(conn)
-            log.info("🔌 Connection returned to pool successfully.")
+     
 
 @app.post("/feedback")
 @limiter.limit("10/minute")
