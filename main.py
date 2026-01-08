@@ -689,11 +689,14 @@ async def ask(request: Request, body: AskBody):
         # Παίρνουμε context από τη βάση (Semantic Search)
         db_context_docs = retrieve_context(cursor, question, top_k=body.top_k)
         
-        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ (CSV + DB)
-        all_context = csv_context + "\n" + "\n".join([doc['text'] for doc in db_context_docs])
+        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ (Διορθωμένο για να διαβάζει question/answer)
+        db_context_text = ""
+        for doc in db_context_docs:
+            db_context_text += f"\nΕρώτηση: {doc.get('question', '')}\nΑπάντηση: {doc.get('answer', '')}\n"
+        
+        all_context = csv_context + "\n" + db_context_text
         
         # 5. ΤΟ LLM ΦΤΙΑΧΝΕΙ ΤΗΝ ΕΞΥΠΝΗ ΑΠΑΝΤΗΣΗ
-        # Εδώ το ChatGPT θα χρησιμοποιήσει το System Prompt και το all_context
         answer, metadata = await generate_answer_with_rag(question, all_context, current_lang)
         
         return {
