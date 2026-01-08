@@ -689,10 +689,11 @@ async def ask(request: Request, body: AskBody):
         # Παίρνουμε context από τη βάση (Semantic Search)
         db_context_docs = retrieve_context(cursor, question, top_k=body.top_k)
         
-        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ (Διορθωμένο για να διαβάζει question/answer)
+        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ (Διορθωμένο για απλά κείμενα)
         db_context_text = ""
         for doc in db_context_docs:
-            db_context_text += f"\nΕρώτηση: {doc.get('question', '')}\nΑπάντηση: {doc.get('answer', '')}\n"
+            # Επειδή το doc είναι ήδη κείμενο (string), το προσθέτουμε απευθείας
+            db_context_text += f"\nΠληροφορία: {doc}\n"
         
         all_context = csv_context + "\n" + db_context_text
         
