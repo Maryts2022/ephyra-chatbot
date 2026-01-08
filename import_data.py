@@ -5,15 +5,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# 2. ΜΕΤΑ ορίζουμε τη μεταβλητή db_url (ΑΥΤΟ ΛΕΙΠΕΙ)
+db_url = os.getenv("DATABASE_URL")
+
 def import_csv():
     try:
-        conn = psycopg2.connect(
-            dbname=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASS"),
-            host=os.getenv("DB_HOST"),
-            port=os.getenv("DB_PORT", "5432")
-        )
+        conn = psycopg2.connect(db_url)
+        print("✅ Συνδέθηκα στο Railway!")
+    except Exception as e:
+        print(f"❌ Σφάλμα: {e}")
+
         cur = conn.cursor()
         csv_file = "QA_chatbot(gr).csv"
         

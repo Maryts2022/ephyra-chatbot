@@ -19,6 +19,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+
+app = FasstAPI()
+#Εδώ ακριβώς κόλλησε το mount:
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
