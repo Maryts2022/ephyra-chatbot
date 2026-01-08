@@ -651,6 +651,15 @@ async def health():
         "architecture": "Retrieval Augmented Generation with OpenAI GPT-4o-mini"
     }
 
+@app.get("/dashboard")
+async def get_dashboard():
+    """Endpoint για την προβολή του Feedback Dashboard."""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    dashboard_path = os.path.join(current_dir, "feedback_dashboard.html")
+    
+    if os.path.exists(dashboard_path):
+        return FileResponse(dashboard_path, media_type="text/html")
+    return {"error": "Dashboard file not found"}
 
 @app.post("/ask")
 @limiter.limit("30/minute")
