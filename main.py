@@ -655,9 +655,12 @@ async def health():
         "architecture": "Retrieval Augmented Generation with OpenAI GPT-4o-mini"
     }
 
+
 @app.post("/ask")
 @limiter.limit("30/minute")
 async def ask(request: Request, body: AskBody):
+    # 1. Αρχικοποίηση
+    conn = None
     current_lang = body.lang or detect_user_lang(body.messages[-1].content if body.messages else "")
     question = (body.messages[-1].content if body.messages else "").strip()
 
@@ -667,21 +670,44 @@ async def ask(request: Request, body: AskBody):
             "quality": "error"
         }
 
-    # --- ΝΕΟ ΚΟΜΜΑΤΙ: Γρήγορη αναζήτηση στο CSV ---
+    # 2. ΣΥΛΛΟΓΗ ΠΛΗΡΟΦΟΡΙΩΝ ΑΠΟ CSV (Χωρίς return!)
+    csv_context = ""
     query_lower = question.lower()
     for row in knowledge_base:
-        # Μετατρέπουμε τις τιμές της γραμμής σε λίστα
         values = list(row.values())
         if len(values) >= 2:
-            csv_q = str(values[0]).lower()  # 1η στήλη: Ερώτηση
-            csv_a = values[1]               # 2η στήλη: Απάντηση
-            
+            csv_q = str(values[0]).lower()
+            csv_a = values[1]
             if csv_q in query_lower or query_lower in csv_q:
-                return {
-                    "answer": csv_a,
-                    "quality": "high",
-                    "source": "csv"
-                }
+                csv_context += f"\nΣχετική πληροφορία από CSV: {csv_a}\n"
+
+    try:
+        # 3. ΣΥΝΔΕΣΗ ΚΑΙ SEARCH ΣΤΗ ΒΑΣΗ
+        conn = get_db_conn() 
+        cursor = conn.cursor()
+        
+        # Παίρνουμε context από τη βάση (Semantic Search)
+        db_context_docs = retrieve_context(cursor, question, top_k=body.top_k)
+        
+        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ (CSV + DB)
+        all_context = csv_context + "\n" + "\n".join([doc['text'] for doc in db_context_docs])
+        
+        # 5. ΤΟ LLM ΦΤΙΑΧΝΕΙ ΤΗΝ ΕΞΥΠΝΗ ΑΠΑΝΤΗΣΗ
+        # Εδώ το ChatGPT θα χρησιμοποιήσει το System Prompt και το all_context
+        answer, metadata = await generate_answer_with_rag(question, all_context, current_lang)
+        
+        return {
+            "answer": answer,
+            "quality": "generated",
+            "source": "hybrid_rag"
+        }
+
+    except Exception as e:
+        log.error(f"❌ Error: {e}")
+        return {"answer": "Λυπάμαι, παρουσιάστηκε ένα πρόβλημα.", "quality": "error"}
+    finally:
+        if conn:
+            return_db_conn(conn)
     # ----------------------------------------------
 
     try:
