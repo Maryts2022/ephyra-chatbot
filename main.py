@@ -179,6 +179,11 @@ def init_feedback_table():
     try:
         conn = get_db_conn()
         cursor = conn.cursor()
+        
+        # ΠΡΟΣΟΧΗ: Διαγράφουμε τον παλιό πίνακα για να τον ξαναφτιάξουμε σωστά
+        cursor.execute("DROP TABLE IF EXISTS chatbot_feedback CASCADE;") 
+        
+        # Δημιουργία με τα ονόματα που θέλουν οι συναρτήσεις σου (timestamp και ip_address)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS chatbot_feedback (
                 id SERIAL PRIMARY KEY,
@@ -186,20 +191,19 @@ def init_feedback_table():
                 bot_response TEXT,
                 user_question TEXT,
                 is_positive BOOLEAN,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Ονομάστηκε timestamp για το Dashboard
                 user_agent TEXT,
-                client_ip TEXT 
+                ip_address TEXT  -- Ονομάστηκε ip_address για το record_feedback
             );
         """)
         conn.commit()
-        log.info("✅ Ο πίνακας 'chatbot_feedback' είναι έτοιμος!")
+        log.info("🚀 Database Table 'chatbot_feedback' is now PERFECT!")
     except Exception as e:
-        log.error(f"❌ Σφάλμα στη δημιουργία του πίνακα: {e}")
+        log.error(f"❌ Error initializing table: {e}")
     finally:
         if conn:
             return_db_conn(conn)
 
-# ΚΑΛΕΣΕ ΤΗΝ ΤΩΡΑ για να φτιαχτεί ο πίνακας μόλις ξεκινήσει το bot
 init_feedback_table()
 
 # ================== Embeddings (Lazy Load) ==================
