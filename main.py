@@ -153,19 +153,54 @@ except Exception as e:
     log.exception("❌ Database connection failed")
     raise
 
+# 1. Η βασική συνάρτηση
 def get_db_conn():
     try:
         return conn_pool.getconn()
     except Exception as e:
-        log.exception("❌ Failed to get DB connection")
+        log.exception("❌ Failed to get DB connection from pool")
         raise
 
+# 2. Η συνάρτηση επιστροφής
 def return_db_conn(conn):
     if conn:
-        conn_pool.putconn(conn)
+        try:
+            conn_pool.putconn(conn)
+        except Exception as e:
+            log.error(f"❌ Error returning connection to pool: {e}")
 
-# Alias για συμβατότητα
+# 3. Τα Aliases (για να μη χτυπάει πουθενά ο κώδικας)
 get_db_connection = get_db_conn
+return_db_connection = return_db_conn
+
+# 4. Αυτόματη δημιουργία πίνακα feedback αν λείπει
+def init_feedback_table():
+    conn = None
+    try:
+        conn = get_db_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chatbot_feedback (
+                id SERIAL PRIMARY KEY,
+                conversation_id TEXT,
+                bot_response TEXT,
+                user_question TEXT,
+                is_positive BOOLEAN,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                user_agent TEXT,
+                client_ip TEXT 
+            );
+        """)
+        conn.commit()
+        log.info("✅ Ο πίνακας 'chatbot_feedback' είναι έτοιμος!")
+    except Exception as e:
+        log.error(f"❌ Σφάλμα στη δημιουργία του πίνακα: {e}")
+    finally:
+        if conn:
+            return_db_conn(conn)
+
+# ΚΑΛΕΣΕ ΤΗΝ ΤΩΡΑ για να φτιαχτεί ο πίνακας μόλις ξεκινήσει το bot
+init_feedback_table()
 
 # ================== Embeddings (Lazy Load) ==================
 embedder = None
