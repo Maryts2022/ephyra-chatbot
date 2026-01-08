@@ -37,6 +37,17 @@ import re
 from sentence_transformers import SentenceTransformer
 from langdetect import detect, LangDetectException
 from fastapi.middleware.cors import CORSMiddleware
+
+import csv
+
+# Δημιουργούμε μια λίστα για να αποθηκεύσουμε τις ερωταπαντήσεις
+knowledge_base = []
+
+# Ανοίγουμε το αρχείο που ανέβασες στο GitHub
+with open("QA_chatbot.csv", mode="r", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        knowledge_base.append(row)
 # ================== Configuration ==================
 load_dotenv(dotenv_path=Path(__file__).with_name(".env"), override=True)
 
