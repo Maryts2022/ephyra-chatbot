@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-app = FasstAPI()
+app = FastAPI()
 #Εδώ ακριβώς κόλλησε το mount:
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
