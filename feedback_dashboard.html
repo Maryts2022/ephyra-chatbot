@@ -465,9 +465,7 @@
  <script>
     const API_URL = window.location.origin;
     let allFeedbackData = [];
-    let feedbackChart = null;
-    let languageChart = null;
-    
+
     // 1. Φόρτωση Δεδομένων από το νέο endpoint /survey_results
     async function loadData() {
       try {
@@ -486,14 +484,13 @@
         // Update table
         updateTable(allFeedbackData);
         
-        // Σημείωση: Τα charts και τα stats (response times κλπ) 
-        // θα μείνουν κενά ή σταθερά γιατί το Survey στέλνει μόνο κείμενο
-        
       } catch (error) {
         console.error('Error:', error);
+        const tbody = document.getElementById('feedbackTableBody');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #ff6b6b; padding: 20px;">Σφάλμα σύνδεσης με τη βάση</td></tr>';
       }
     }
-    
+
     // 2. Εμφάνιση των απαντήσεων του ερωτηματολογίου στον πίνακα
     function updateTable(feedbackData) {
       const tbody = document.getElementById('feedbackTableBody');
@@ -506,42 +503,41 @@
         <tr>
           <td>#${item.id}</td>
           <td><span class="sentiment-badge sentiment-positive">✅ Survey</span></td>
-          <td><div class="response-preview">${escapeHtml(item.q1 || '-')}</div></td>
-          <td><div class="response-preview">${escapeHtml(item.q2 || '-')}</div></td>
-          <td><div class="response-preview">${escapeHtml(item.q3 || '-')}</div></td>
-          <td><div class="response-preview">${escapeHtml(item.q4 || '-')}</div></td>
-          <td>${item.timestamp}</td>
+          <td><div class="response-preview" title="${item.q1 || ''}">${escapeHtml(item.q1 || '-')}</div></td>
+          <td><div class="response-preview" title="${item.q2 || ''}">${escapeHtml(item.q2 || '-')}</div></td>
+          <td><div class="response-preview" title="${item.q3 || ''}">${escapeHtml(item.q3 || '-')}</div></td>
+          <td><div class="response-preview" title="${item.q4 || ''}">${escapeHtml(item.q4 || '-')}</div></td>
+          <td style="font-size: 0.85em; color: #8aa4c0;">${item.timestamp}</td>
         </tr>
       `).join('');
     }
-    
+
     function filterTable() {
-      // Επειδή είναι survey, δείχνουμε πάντα όλα τα δεδομένα
       updateTable(allFeedbackData);
     }
-    
+
     function escapeHtml(text) {
       if (!text) return '-';
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
-    
+
     async function refreshData() {
       await loadData();
     }
-    
+
     async function exportData() {
       alert('Η λειτουργία εξαγωγής CSV θα προσαρμοστεί σύντομα για το Survey.');
     }
-    
+
     async function clearAllFeedback() {
       if (!confirm('⚠️ Είστε σίγουρος; Αυτό θα διαγράψει ΟΛΑ τα δεδομένα από το Railway!')) {
         return;
       }
       alert('Η διαγραφή απενεργοποιήθηκε προσωρινά για ασφάλεια.');
     }
-    
+
     // Αρχική φόρτωση
     loadData();
 
