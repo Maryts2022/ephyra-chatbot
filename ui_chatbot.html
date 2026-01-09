@@ -265,6 +265,29 @@
   outline: none !important;            /* ✨ χωρίς περίγραμμα εστίασης */
 }
 
+/* --- ΑΥΤΟ ΜΠΑΙΝΕΙ ΠΡΙΝ ΤΑ @MEDIA --- */
+.scenario-content {
+    display: none; /* Ξεκινάει κρυφό για όλες τις συσκευές */
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-top: 1px solid var(--ring);
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.scenario-content.open {
+    display: block !important; /* Εμφανίζεται όταν παίρνει την κλάση open */
+}
+
+.card-header {
+    cursor: pointer; /* Δείχνει στον χρήστη ότι ο τίτλος πατιέται */
+}
+
+/* ------------------------------------ */
+
+/* Εδώ συνεχίζουν τα @media σου... */
+@media (max-width:900px) { ... }
+
 /* Optional gentle pulse when speaking (class can be toggled by existing code) */
 .chat-launcher.speaking img{
   animation: stickerPulse 1.6s ease-in-out infinite;
