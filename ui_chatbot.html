@@ -452,11 +452,11 @@
 
     /* 4. Chat Panel - Η Εφύρα να είναι η προτεραιότητα */
     .chat-panel {
-        height: 85vh !important; 
-        width: 96% !important; 
-        right: 2% !important; 
-        left: 2% !important; 
-        bottom: 80px !important;
+        height: 75vh !important; /* Το ύψος θα είναι το 75% της οθόνης, όχι παραπάνω */
+        width: 92% !important;  /* Να αφήνει λίγο κενό δεξιά-αριστερά */
+        right: 4% !important;   /* Κεντράρισμα */
+        left: 4% !important;    /* Κεντράρισμα */
+        bottom: 80px !important; /* Να κάθεται πάνω από το κουμπί */
         border-radius: 20px !important;
     }
 
@@ -514,7 +514,7 @@
     </div>
     <div class="cards" role="list">
       <article class="card" role="listitem" aria-label="CityCertify">
-        <div class="card-header">
+        <div class="card-header" onclick="toggleScenario()" style="cursor: pointer;">
         <div class="icon" aria-hidden="true">🏙️</div>
        <h3 class="scenario-title" style="cursor:pointer;">1<sup>ο</sup> Σενάριο Χρήστη</h3>
      </div>
@@ -530,7 +530,7 @@
 
       </article>
       <article class="card" role="listitem" aria-label="DigiHub">
-        <div class="card-header">
+        <div class="card-header" onclick="toggleScenario()" style="cursor: pointer;">
         <div class="icon" aria-hidden="true">🗂️</div>
         <h3 class="scenario-title" style="cursor:pointer;">2<sup>ο</sup> Σενάριο Χρήστη</h3>
       </div>
@@ -551,7 +551,7 @@
 </div>
       </article>
       <article class="card" role="listitem" aria-label="ΔΣ.live">
-        <div class="card-header">
+        <div class="card-header" onclick="toggleScenario()" style="cursor: pointer;">
         <div class="icon" aria-hidden="true">📺</div>
         <h3 class="scenario-title" style="cursor:pointer;">3<sup>ο</sup> Σενάριο Χρήστη</h3>
       </div>
@@ -566,7 +566,7 @@
 </div>
       </article>
       <article class="card" role="listitem" aria-label="CityOpinion">
-        <div class="card-header">
+        <div class="card-header" onclick="toggleScenario()" style="cursor: pointer;">
         <div class="icon" aria-hidden="true">💬</div>
         <h3 class="scenario-title" style="cursor:pointer;">4<sup>ο</sup> Σενάριο Χρήστη</h3>
       </div>
@@ -584,7 +584,7 @@
       </article>
 
       <article class="card" role="listitem" aria-label="Plateia.live">
-        <div class="card-header">
+        <div class="card-header" onclick="toggleScenario()" style="cursor: pointer;">
         <div class="icon" aria-hidden="true">📡</div>
         <h3 class="scenario-title" style="cursor:pointer;">5<sup>ο</sup> Σενάριο Χρήστη</h3>
       </div>
@@ -599,7 +599,7 @@
       </article>
 
       <article class="card" role="listitem" aria-label="Αιτήματα Πολιτών">
-        <div class="card-header">
+        <div class="card-header" onclick="toggleScenario()" style="cursor: pointer;">
         <div class="icon" aria-hidden="true">✅</div>
         <h3 class="scenario-title" style="cursor:pointer;">6<sup>ο</sup> Σενάριο Χρήστη</h3>
       </div>
@@ -1539,7 +1539,14 @@ document.addEventListener('click', (e) => {
 });
 
 
-
+function toggleScenario() {
+  const content = document.getElementById('scenarioBody');
+  if (content.style.display === "block") {
+    content.style.display = "none";
+  } else {
+    content.style.display = "block";
+  }
+}
 
   </script>
 </body>
