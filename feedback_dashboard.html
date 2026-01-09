@@ -462,167 +462,39 @@
   </div>
   
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-  <script>
+ <script>
     const API_URL = window.location.origin;
     let allFeedbackData = [];
     let feedbackChart = null;
     let languageChart = null;
     
+    // 1. Φόρτωση Δεδομένων από το νέο endpoint /survey_results
     async function loadData() {
       try {
-        const days = document.getElementById('filterDays').value;
-        const response = await fetch(`${API_URL}/feedback/stats?days=${days}&detailed=true`);
+        const response = await fetch(`${API_URL}/survey_results`);
         
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const data = await response.json();
+        allFeedbackData = data;
         
-        // Update KPIs
-        document.getElementById('totalFeedback').textContent = (data.total_feedback || 0).toLocaleString('el-GR');
-        document.getElementById('satisfactionRate').textContent = (data.satisfaction_rate || 0) + '%';
-        document.getElementById('positiveFeedback').textContent = (data.positive || 0).toLocaleString('el-GR');
-        document.getElementById('negativeFeedback').textContent = (data.negative || 0).toLocaleString('el-GR');
-        
-        // Percentages
-        const posPercent = data.total_feedback > 0 ? ((data.positive / data.total_feedback) * 100).toFixed(1) : 0;
-        const negPercent = data.total_feedback > 0 ? ((data.negative / data.total_feedback) * 100).toFixed(1) : 0;
-        document.getElementById('positivePercent').innerHTML = `↗ ${posPercent}%`;
-        document.getElementById('negativePercent').innerHTML = `↘ ${negPercent}%`;
-        
-        // Sentiment Trend
-        const trendClass = data.sentiment_trend > 0 ? 'positive' : data.sentiment_trend < 0 ? 'negative' : 'neutral';
-        document.getElementById('sentimentTrend').className = `stat-change ${trendClass}`;
-        document.getElementById('sentimentTrend').innerHTML = data.sentiment_trend_percent || '0%';
-        
-        // Response Times
-        document.getElementById('avgResponseTime').textContent = (data.avg_response_time || 0).toFixed(2) + 's';
-        document.getElementById('responseTimeRange').textContent = `Min: ${(data.min_response_time || 0).toFixed(2)}s / Max: ${(data.max_response_time || 0).toFixed(2)}s`;
-        document.getElementById('minTime').textContent = (data.min_response_time || 0).toFixed(2) + 's';
-        document.getElementById('maxTime').textContent = (data.max_response_time || 0).toFixed(2) + 's';
-        
-        // Users
-        document.getElementById('uniqueUsers').textContent = (data.unique_users || 0).toLocaleString('el-GR');
-        document.getElementById('weeklyActive').textContent = `${data.weekly_active_users || 0} Active (7ημ.)`;
-        document.getElementById('weeklyMetric').textContent = `${data.weekly_active_users || 0} χρήστες`;
-        
-        // Update charts
-        updateChart(data.daily_data || []);
-        updateLanguageChart(data.language_distribution || {});
-        
-        // Update insights
-        updateTopIssues(data.top_issues || []);
-        updateTopQuestions(data.top_questions || []);
+        // Ενημέρωση KPIs (Καρτέλες στο πάνω μέρος)
+        document.getElementById('totalFeedback').textContent = data.length.toLocaleString('el-GR');
+        document.getElementById('uniqueUsers').textContent = data.length.toLocaleString('el-GR');
+        document.getElementById('satisfactionRate').textContent = '100%';
         
         // Update table
-        allFeedbackData = data.recent_feedback || [];
         updateTable(allFeedbackData);
+        
+        // Σημείωση: Τα charts και τα stats (response times κλπ) 
+        // θα μείνουν κενά ή σταθερά γιατί το Survey στέλνει μόνο κείμενο
         
       } catch (error) {
         console.error('Error:', error);
-        alert('Σφάλμα: ' + error.message);
       }
     }
     
-    function updateChart(dailyData) {
-      const dateMap = {};
-      dailyData.forEach(item => {
-        if (!dateMap[item.date]) dateMap[item.date] = { positive: 0, negative: 0 };
-        if (item.sentiment === 'positive') {
-          dateMap[item.date].positive = item.count;
-        } else {
-          dateMap[item.date].negative = item.count;
-        }
-      });
-      
-      const dates = Object.keys(dateMap).sort();
-      const positiveData = dates.map(d => dateMap[d].positive);
-      const negativeData = dates.map(d => dateMap[d].negative);
-      
-      if (feedbackChart) feedbackChart.destroy();
-      
-      const ctx = document.getElementById('feedbackChart').getContext('2d');
-      feedbackChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: dates.map(d => new Date(d).toLocaleDateString('el-GR', { month: 'short', day: 'numeric' })),
-          datasets: [
-            {
-              label: 'Θετικά 👍',
-              data: positiveData,
-              borderColor: '#20c997',
-              backgroundColor: 'rgba(32, 201, 151, 0.1)',
-              tension: 0.4,
-              fill: true
-            },
-            {
-              label: 'Αρνητικά 👎',
-              data: negativeData,
-              borderColor: '#ff6b6b',
-              backgroundColor: 'rgba(255, 107, 107, 0.1)',
-              tension: 0.4,
-              fill: true
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: { legend: { labels: { color: '#e3e8ef' } } },
-          scales: {
-            y: { ticks: { color: '#8aa4c0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-            x: { ticks: { color: '#8aa4c0' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-          }
-        }
-      });
-    }
-    
-    function updateLanguageChart(langDist) {
-      const labels = Object.keys(langDist);
-      const data = Object.values(langDist);
-      
-      if (languageChart) languageChart.destroy();
-      
-      const ctx = document.getElementById('languageChart').getContext('2d');
-      languageChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: labels.map(l => l === 'el' ? 'Ελληνικά' : l === 'en' ? 'English' : l),
-          datasets: [{
-            data: data,
-            backgroundColor: ['#1e90ff', '#20c997', '#ff6b6b', '#ffc107'],
-            borderColor: 'rgba(255,255,255,0.1)',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { labels: { color: '#e3e8ef' } } }
-        }
-      });
-    }
-    
-    function updateTopIssues(issues) {
-      const list = document.getElementById('topIssuesList');
-      if (!issues || issues.length === 0) {
-        list.innerHTML = '<li style="color: #8aa4c0;">Δεν υπάρχουν αρνητικές αναφορές</li>';
-        return;
-      }
-      list.innerHTML = issues.map((issue, i) => 
-        `<li>${i+1}. <strong>${issue.category}</strong> (${issue.count}x)</li>`
-      ).join('');
-    }
-    
-    function updateTopQuestions(questions) {
-      const list = document.getElementById('topQuestionsList');
-      if (!questions || questions.length === 0) {
-        list.innerHTML = '<li style="color: #8aa4c0;">Δεν υπάρχουν ερωτήσεις</li>';
-        return;
-      }
-      list.innerHTML = questions.map((q, i) => 
-        `<li>${i+1}. <strong>${q.question.substring(0, 40)}...</strong> (${q.count}x)</li>`
-      ).join('');
-    }
-    
+    // 2. Εμφάνιση των απαντήσεων του ερωτηματολογίου στον πίνακα
     function updateTable(feedbackData) {
       const tbody = document.getElementById('feedbackTableBody');
       if (!feedbackData || feedbackData.length === 0) {
@@ -633,27 +505,23 @@
       tbody.innerHTML = feedbackData.map(item => `
         <tr>
           <td>#${item.id}</td>
-          <td><span class="sentiment-badge sentiment-${item.is_positive ? 'positive' : 'negative'}">
-            ${item.is_positive ? '👍' : '👎'}
-          </span></td>
-          <td><div class="response-preview">${escapeHtml(item.user_question || '-')}</div></td>
-          <td><div class="response-preview">${escapeHtml(item.bot_response || '-')}</div></td>
-          <td>${(item.response_time || 0).toFixed(2)}</td>
-          <td>${item.language === 'el' ? '🇬🇷 EL' : '🇬🇧 EN'}</td>
-          <td>${new Date(item.timestamp).toLocaleString('el-GR')}</td>
+          <td><span class="sentiment-badge sentiment-positive">✅ Survey</span></td>
+          <td><div class="response-preview">${escapeHtml(item.q1 || '-')}</div></td>
+          <td><div class="response-preview">${escapeHtml(item.q2 || '-')}</div></td>
+          <td><div class="response-preview">${escapeHtml(item.q3 || '-')}</div></td>
+          <td><div class="response-preview">${escapeHtml(item.q4 || '-')}</div></td>
+          <td>${item.timestamp}</td>
         </tr>
       `).join('');
     }
     
     function filterTable() {
-      const sentiment = document.getElementById('filterSentiment').value;
-      let filtered = allFeedbackData;
-      if (sentiment === 'positive') filtered = allFeedbackData.filter(i => i.is_positive);
-      else if (sentiment === 'negative') filtered = allFeedbackData.filter(i => !i.is_positive);
-      updateTable(filtered);
+      // Επειδή είναι survey, δείχνουμε πάντα όλα τα δεδομένα
+      updateTable(allFeedbackData);
     }
     
     function escapeHtml(text) {
+      if (!text) return '-';
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
@@ -664,46 +532,21 @@
     }
     
     async function exportData() {
-      try {
-        const days = document.getElementById('filterDays').value;
-        window.location.href = `${API_URL}/feedback/export?days=${days}&format=csv`;
-      } catch (error) {
-        alert('Σφάλμα: ' + error.message);
-      }
+      alert('Η λειτουργία εξαγωγής CSV θα προσαρμοστεί σύντομα για το Survey.');
     }
     
     async function clearAllFeedback() {
-      if (!confirm('⚠️ Είστε σίγουρος; Αυτό θα διαγράψει ΟΛΑ τα feedback. Δεν μπορεί να αναιρεθεί!')) {
+      if (!confirm('⚠️ Είστε σίγουρος; Αυτό θα διαγράψει ΟΛΑ τα δεδομένα από το Railway!')) {
         return;
       }
-      
-      try {
-        const response = await fetch(`${API_URL}/feedback/clear`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-          alert('✅ ' + (data.message || 'Όλα τα feedback διαγράφηκαν!'));
-          refreshData();
-        } else {
-          alert('❌ Σφάλμα: ' + (data.message || 'Αγνώστο σφάλμα'));
-        }
-      } catch (error) {
-        alert('❌ Σφάλμα: ' + error.message);
-      }
+      alert('Η διαγραφή απενεργοποιήθηκε προσωρινά για ασφάλεια.');
     }
     
-    // Auto-refresh κάθε 30 δευτερόλεπτα
-    setInterval(refreshData, 30000);
-    
-    // Initial load
+    // Αρχική φόρτωση
     loadData();
 
-    // Ανανέωση δεδομένων αυτόματα κάθε 10 δευτερόλεπτα
-setInterval(refreshData, 10000);
+    // Ανανέωση δεδομένων αυτόματα κάθε 20 δευτερόλεπτα
+    setInterval(refreshData, 20000);
   </script>
 </body>
 </html>

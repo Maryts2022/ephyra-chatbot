@@ -1264,3 +1264,29 @@ async def submit_survey(data: SurveyResponse):
     finally:
         cur.close()
         return_db_conn(conn)
+
+
+        
+@app.get("/survey_results")
+async def get_survey_results():
+    conn = get_db_conn()
+    cur = conn.cursor()
+    try:
+        # Παίρνουμε όλες τις απαντήσεις από τον πίνακα που φτιάξαμε
+        cur.execute("SELECT id, timestamp, q1, q2, q3, q4, q5, comments FROM survey_results ORDER BY timestamp DESC")
+        rows = cur.fetchall()
+        
+        results = []
+        for r in rows:
+            results.append({
+                "id": r[0],
+                "timestamp": r[1].strftime("%Y-%m-%d %H:%M:%S"),
+                "q1": r[2], "q2": r[3], "q3": r[4], "q4": r[5], "q5": r[6],
+                "comments": r[7]
+            })
+        return results
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        cur.close()
+        return_db_conn(conn)
