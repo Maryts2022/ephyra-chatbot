@@ -412,61 +412,35 @@
     .cards{grid-template-columns:repeat(2,1fr)} 
 }
 
-@media (max-width:600px){
-    /* 1. Header & Nav - Τακτοποίηση για να μη στριμώχνονται */
-    .nav {
-        margin: 10px auto 0 !important;
-        padding: 8px 12px !important;
-        flex-wrap: wrap !important; /* Επιτρέπει στα στοιχεία να αλλάζουν γραμμή αν χρειαστεί */
-    }
-    .brand span { font-size: 14px !important; }
-    .menu { display: none !important; } /* Κρύβουμε το μενού στο κινητό για χώρο */
+/* --- ΕΝΙΑΙΟ RESPONSIVE ΓΙΑ ΚΙΝΗΤΑ --- */
+@media (max-width:600px) {
+    .menu { display:none !important; }
+    .cards { grid-template-columns: 1fr !important; }
+    .hero { min-height: 45vh !important; }
 
-    /* 2. Hero Section - Η εικόνα να μην "πνίγει" το κείμενο */
-    .hero {
-        min-height: 45vh !important; /* Μικραίνουμε το ύψος της εικόνας */
-        padding: 20px 0 !important;
-    }
-    .hero h1 {
-        font-size: 24px !important;
-        text-align: center !important;
-    }
-    .search {
-        width: 100% !important;
-        border-radius: 20px !important;
-    }
-
-    /* 3. Υπηρεσίες (Cards) - Μία κάτω από την άλλη οπωσδήποτε */
-    .services {
-        margin-top: -20px !important; /* Ανεβαίνουν λίγο πάνω στην εικόνα */
-        padding: 0 10px !important;
-    }
-    .cards {
-        grid-template-columns: 1fr !important; /* 1 στήλη */
-        gap: 15px !important;
-    }
-    .card {
-        min-height: auto !important; /* Να μην είναι τεράστιες σε ύψος */
-        padding: 15px !important;
-    }
-
-    /* 4. Chat Panel - Η Εφύρα να είναι η προτεραιότητα */
+    /* Το chatbot να προσαρμόζεται σωστά */
     .chat-panel {
-        height: 75vh !important; /* Το ύψος θα είναι το 75% της οθόνης, όχι παραπάνω */
-        width: 92% !important;  /* Να αφήνει λίγο κενό δεξιά-αριστερά */
-        right: 4% !important;   /* Κεντράρισμα */
-        left: 4% !important;    /* Κεντράρισμα */
-        bottom: 80px !important; /* Να κάθεται πάνω από το κουμπί */
+        height: 70vh !important; 
+        width: 92% !important; 
+        right: 4% !important; 
+        left: 4% !important; 
+        bottom: 80px !important;
         border-radius: 20px !important;
     }
 
-    #chatField { font-size: 16px !important; } /* Τέρμα το Zoom */
+    #chatField { font-size: 16px !important; }
+
+    /* Το σενάριο χρήστη να ξεκινάει ΚΛΕΙΣΤΟ */
+    .scenario-content {
+        display: none; 
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.05);
+        border-top: 1px solid var(--ring);
+    }
     
-    .chat-launcher {
-        width: 70px !important;
-        height: 95px !important;
-        bottom: 15px !important;
-        right: 15px !important;
+    /* Όταν παίρνει την κλάση .open από το JS, να ανοίγει */
+    .scenario-content.open {
+        display: block !important;
     }
 
     .accessibility-panel {
