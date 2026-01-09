@@ -413,102 +413,68 @@
 }
 
 @media (max-width:600px){
-    .menu{display:none}
-    .cards{grid-template-columns:1fr}
-    .hero{min-height:50vh}
+    /* 1. Header & Nav - Τακτοποίηση για να μη στριμώχνονται */
+    .nav {
+        margin: 10px auto 0 !important;
+        padding: 8px 12px !important;
+        flex-wrap: wrap !important; /* Επιτρέπει στα στοιχεία να αλλάζουν γραμμή αν χρειαστεί */
+    }
+    .brand span { font-size: 14px !important; }
+    .menu { display: none !important; } /* Κρύβουμε το μενού στο κινητό για χώρο */
 
-    .chat-panel {
-        height: 82vh !important; 
-        width: 94% !important; 
-        right: 3% !important; 
-        left: 3% !important; 
-        bottom: 85px !important;
+    /* 2. Hero Section - Η εικόνα να μην "πνίγει" το κείμενο */
+    .hero {
+        min-height: 45vh !important; /* Μικραίνουμε το ύψος της εικόνας */
+        padding: 20px 0 !important;
+    }
+    .hero h1 {
+        font-size: 24px !important;
+        text-align: center !important;
+    }
+    .search {
+        width: 100% !important;
         border-radius: 20px !important;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
     }
 
-    #chatField {
-        font-size: 16px !important; 
-        padding: 14px !important;
+    /* 3. Υπηρεσίες (Cards) - Μία κάτω από την άλλη οπωσδήποτε */
+    .services {
+        margin-top: -20px !important; /* Ανεβαίνουν λίγο πάνω στην εικόνα */
+        padding: 0 10px !important;
     }
-
-    .msg {
-        max-width: 88% !important;
-        font-size: 15px !important;
+    .cards {
+        grid-template-columns: 1fr !important; /* 1 στήλη */
+        gap: 15px !important;
     }
-
-    .chat-header {
+    .card {
+        min-height: auto !important; /* Να μην είναι τεράστιες σε ύψος */
         padding: 15px !important;
     }
 
-    /* Μεταφέραμε το accessibility panel ΕΔΩ ΜΕΣΑ για να δουλεύει μόνο στα κινητά */
+    /* 4. Chat Panel - Η Εφύρα να είναι η προτεραιότητα */
+    .chat-panel {
+        height: 85vh !important; 
+        width: 96% !important; 
+        right: 2% !important; 
+        left: 2% !important; 
+        bottom: 80px !important;
+        border-radius: 20px !important;
+    }
+
+    #chatField { font-size: 16px !important; } /* Τέρμα το Zoom */
+    
+    .chat-launcher {
+        width: 70px !important;
+        height: 95px !important;
+        bottom: 15px !important;
+        right: 15px !important;
+    }
+
     .accessibility-panel {
         width: 90% !important;
-        right: 5% !important;
         left: 5% !important;
         bottom: 100px !important;
-        box-sizing: border-box !important;
     }
-    .accessibility-panel h3 { font-size: 1.1rem !important; }
-    .accessibility-panel button { padding: 12px !important; font-size: 14px !important; }
 }
-
-/* --- 2. ΣΤΥΛ ΜΗΝΥΜΑΤΩΝ & ΚΟΥΜΠΙΩΝ (ΓΙΑ ΟΛΕΣ ΤΙΣ ΣΥΣΚΕΥΕΣ) --- */
-.msg.bot .quick-reply-btn{
-  background:#f7fbff;
-  border:1px solid #cfe0f5;
-  color:#123d7a;
-  border-radius:10px;
-  box-shadow:none;
-  font-weight:400;
-  font-size:14px;
-}
-
-.msg.bot .quick-reply-btn:hover{
-  background:#eaf3ff;
-  border-color:#bdd5ff;
-  transform:none;
-  box-shadow:0 1px 2px rgba(0,0,0,.06);
-}
-
-/* Καθαρό στυλ για τα Quick Replies */
-#quickReplies {
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  flex-wrap: wrap !important;
-  gap: 10px !important;
-  margin-top: 4px;
-  overflow: hidden;
-}
-
-#quickReplies .quick-reply-btn {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  margin: 0 !important;
-}
-
-/* --- 3. ΛΟΙΠΑ ΣΤΟΙΧΕΙΑ (ΓΛΩΣΣΑ, CARDS ΚΛΠ) --- */
-#chatLangSwitch .lang-btn{
-  color:#123d7a !important;
-  background:#fff !important;
-  border:1px solid #d0d7de;
-  border-radius:10px;
-  padding:6px 10px;
-  font-weight:600;
-  font-size:13px;
-  line-height:1;
-}
-#chatLangSwitch .lang-btn .flag{ margin-right:6px; }
-#chatLangSwitch .lang-btn.active{ outline:2px solid #ff7a00; }
-
-.scenario-content{ display:none; }
-.scenario-content.open{ display:block; }
-.card.questionnaire { grid-column: 2; }
-.card-header{ display:flex; align-items:center; gap:12px; }
 </style>
 </head>
 <body>
