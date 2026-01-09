@@ -187,6 +187,52 @@ button.secondary{
   border-top: 1px solid var(--ring);
 }
 
+/* --- RESPONSIVE ΔΙΟΡΘΩΣΕΙΣ ΓΙΑ ΚΙΝΗΤΑ --- */
+@media (max-width: 768px) {
+  body {
+    padding: 10px; /* Λιγότερο κενό γύρω-γύρω */
+  }
+
+  .container {
+    padding: 15px; /* Μικρότερο εσωτερικό κενό στην κάρτα */
+    border-radius: 15px; /* Πιο κομψές γωνίες για μικρές οθόνες */
+  }
+
+  h1 {
+    font-size: 1.5rem; /* Μικρότερος τίτλος για να χωράει σε μια γραμμή */
+  }
+
+  /* Κάνουμε τις επιλογές (Radio Buttons) να φαίνονται κάθετα για να πατιούνται εύκολα */
+  .radio-group {
+    flex-direction: column; 
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* Μεγαλώνουμε τα κουμπιά για να είναι touch-friendly */
+  input[type="radio"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Διόρθωση για τον πίνακα αποτελεσμάτων να μην "σπάει" το layout */
+  .table-container {
+    overflow-x: auto; /* Επιτρέπει οριζόντιο σκρολάρισμα μόνο στον πίνακα */
+    display: block;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 600px; /* Αναγκάζει τον πίνακα να διατηρεί τη δομή του */
+    font-size: 14px;
+  }
+
+  .btn {
+    width: 100%; /* Το κουμπί υποβολής πιάνει όλο το πλάτος στο κινητό */
+    padding: 16px;
+  }
+}
+
   </style>
 </head>
 
