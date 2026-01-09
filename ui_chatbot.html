@@ -406,7 +406,8 @@
     .quick-reply-btn:hover{background:#003366; color:#fff; transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,51,102,.25)}
 
     
-    /* --- ΒΕΛΤΙΩΜΕΝΟ RESPONSIVE UI --- */
+  /* --- 1. RESPONSIVE UI (ΟΛΑ ΜΑΖΙ ΕΔΩ) --- */
+/* --- 1. RESPONSIVE UI (ΟΛΑ ΜΑΖΙ ΕΔΩ) --- */
 @media (max-width:900px){ 
     .cards{grid-template-columns:repeat(2,1fr)} 
 }
@@ -416,7 +417,6 @@
     .cards{grid-template-columns:1fr}
     .hero{min-height:50vh}
 
-    /* Το Chat Panel να πιάνει περισσότερο χώρο στο κινητό */
     .chat-panel {
         height: 82vh !important; 
         width: 94% !important; 
@@ -427,7 +427,6 @@
         box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
     }
 
-    /* Αποτροπή Zoom και καλύτερη ανάγνωση */
     #chatField {
         font-size: 16px !important; 
         padding: 14px !important;
@@ -441,28 +440,38 @@
     .chat-header {
         padding: 15px !important;
     }
+
+    /* Μεταφέραμε το accessibility panel ΕΔΩ ΜΕΣΑ για να δουλεύει μόνο στα κινητά */
+    .accessibility-panel {
+        width: 90% !important;
+        right: 5% !important;
+        left: 5% !important;
+        bottom: 100px !important;
+        box-sizing: border-box !important;
+    }
+    .accessibility-panel h3 { font-size: 1.1rem !important; }
+    .accessibility-panel button { padding: 12px !important; font-size: 14px !important; }
 }
 
-    /* ΜΟΝΟ για κουμπιά μέσα σε bot μηνύματα (όπως τα Παραδείγματα) */
+/* --- 2. ΣΤΥΛ ΜΗΝΥΜΑΤΩΝ & ΚΟΥΜΠΙΩΝ (ΓΙΑ ΟΛΕΣ ΤΙΣ ΣΥΣΚΕΥΕΣ) --- */
 .msg.bot .quick-reply-btn{
   background:#f7fbff;
   border:1px solid #cfe0f5;
   color:#123d7a;
   border-radius:10px;
   box-shadow:none;
-  font-weight:400;        /* 🔹 όχι bold */
+  font-weight:400;
   font-size:14px;
 }
 
 .msg.bot .quick-reply-btn:hover{
   background:#eaf3ff;
   border-color:#bdd5ff;
-  color:#123d7a;
   transform:none;
   box-shadow:0 1px 2px rgba(0,0,0,.06);
 }
 
-/* === Διορθώνει την στοίχιση των quick-replies === */
+/* Καθαρό στυλ για τα Quick Replies */
 #quickReplies {
   display: flex !important;
   flex-direction: row !important;
@@ -470,6 +479,8 @@
   align-items: center !important;
   flex-wrap: wrap !important;
   gap: 10px !important;
+  margin-top: 4px;
+  overflow: hidden;
 }
 
 #quickReplies .quick-reply-btn {
@@ -478,27 +489,17 @@
   justify-content: center;
   white-space: nowrap;
   margin: 0 !important;
-  flex-shrink: 1;
-  min-width: 0;
 }
-#quickReplies {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-  align-items: center;
-  overflow: hidden;
-}
-  
-/* Γλώσσα μέσα στο chatbot */
+
+/* --- 3. ΛΟΙΠΑ ΣΤΟΙΧΕΙΑ (ΓΛΩΣΣΑ, CARDS ΚΛΠ) --- */
 #chatLangSwitch .lang-btn{
-  color:#123d7a !important;      /* κάνε το κείμενο σκούρο */
+  color:#123d7a !important;
   background:#fff !important;
   border:1px solid #d0d7de;
   border-radius:10px;
   padding:6px 10px;
   font-weight:600;
-  font-size:13px;                 /* εξαναγκάζει μέγεθος */
+  font-size:13px;
   line-height:1;
 }
 #chatLangSwitch .lang-btn .flag{ margin-right:6px; }
@@ -506,35 +507,8 @@
 
 .scenario-content{ display:none; }
 .scenario-content.open{ display:block; }
-
-.card.questionnaire {
-  grid-column: 2;
-}
-
-.card-header{
-  display:flex;
-  align-items:center;
-  gap:12px;
-}
-
-/* Μέσα στο @media (max-width:600px) πρόσθεσε αυτά: */
-
-.accessibility-panel {
-    width: 90% !important;  /* Να πιάνει το 90% της οθόνης */
-    right: 5% !important;   /* Να κεντράρεται (5% από δεξιά + 5% από αριστερά) */
-    left: 5% !important;
-    bottom: 100px !important; /* Να ανέβει λίγο πιο πάνω από το κουμπί του chat */
-    box-sizing: border-box !important;
-}
-
-.accessibility-panel h3 {
-    font-size: 1.1rem !important; /* Μικραίνει λίγο ο τίτλος */
-}
-
-.accessibility-panel button {
-    padding: 12px !important; /* Μεγαλώνουν τα κουμπιά για να πατιούνται εύκολα */
-    font-size: 14px !important;
-}
+.card.questionnaire { grid-column: 2; }
+.card-header{ display:flex; align-items:center; gap:12px; }
 </style>
 </head>
 <body>
