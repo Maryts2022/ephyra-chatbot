@@ -188,50 +188,45 @@ button.secondary{
 }
 
 /* --- SUPER MOBILE FIX --- */
+/* --- ΠΡΟΣΘΗΚΗ ΣΤΟ ΤΕΛΟΣ ΤΟΥ STYLE ΓΙΑ ΚΙΝΗΤΑ --- */
 @media screen and (max-width: 600px) {
-  /* Μηδενίζουμε τα μεγάλα περιθώρια */
-  body {
-    padding: 10px !important;
+  /* 1. Τα περιθώρια της σελίδας */
+  .page-wrapper { 
+    width: 95% !important; 
+    padding: 15px 5px !important; 
+  }
+  
+  /* 2. Οι κάρτες των ερωτήσεων */
+  .question { 
+    padding: 15px !important; 
+    margin-bottom: 15px !important; 
   }
 
-  .container {
-    padding: 15px !important;
-    margin: 5px !important;
-    width: auto !important;
-    max-width: 100% !important;
-  }
-
-  /* Κάνουμε τις ερωτήσεις να μην είναι "στριμωγμένες" */
-  .question-block {
-    padding: 15px !important;
-    margin-bottom: 20px !important;
-  }
-
-  /* ΟΛΕΣ οι επιλογές (Radio Buttons) ΜΙΑ ΚΑΤΩ ΑΠΟ ΤΗΝ ΑΛΛΗ */
-  .radio-group {
+  /* 3. ΟΙ ΕΠΙΛΟΓΕΣ (Συμφωνώ/Διαφωνώ κλπ) ΚΑΘΕΤΑ */
+  .options {
     display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 15px !important;
+    flex-direction: column !important; /* Αυτό τις βάζει τη μία κάτω από την άλλη */
+    gap: 8px !important;
   }
 
-  .radio-item {
-    width: 100% !important;
-    padding: 10px !important;
-    background: rgba(255,255,255,0.05) !important; /* Διακριτικό φόντο για να ξέρει πού πατάει */
-    border-radius: 8px !important;
+  .options label {
+    width: 100% !important; 
+    display: flex !important;
+    padding: 12px !important; 
+    box-sizing: border-box !important;
+    background: rgba(255,255,255,0.08) !important; /* Λίγο πιο έντονο για να φαίνεται η περιοχή πατήματος */
   }
 
-  /* Μεγάλα κουμπιά για το δάχτυλο */
-  input[type="radio"] {
-    transform: scale(1.5) !important;
-    margin-right: 15px !important;
+  /* 4. Μεγαλύτερα κουμπάκια για το δάχτυλο */
+  input[type="checkbox"], input[type="radio"] {
+    transform: scale(1.3) !important;
+    margin-right: 12px !important;
   }
 
-  /* Ο τίτλος να μην πιάνει όλη την οθόνη */
-  h1 {
-    font-size: 1.3rem !important;
-    line-height: 1.2 !important;
+  /* 5. Ο τίτλος */
+  h1 { 
+    font-size: 1.5rem !important; 
+    padding: 0 10px !important;
   }
 }
 

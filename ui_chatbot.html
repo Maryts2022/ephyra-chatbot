@@ -406,13 +406,42 @@
     .quick-reply-btn:hover{background:#003366; color:#fff; transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,51,102,.25)}
 
     
-    @media (max-width:900px){ .cards{grid-template-columns:repeat(2,1fr)} }
-    @media (max-width:560px){
-      .menu{display:none}
-      .cards{grid-template-columns:1fr}
-      .hero{min-height:58vh}
-      .chat-panel{height:70vh; width:calc(100vw - 44px); right:22px; left:22px}
+    /* --- ΒΕΛΤΙΩΜΕΝΟ RESPONSIVE UI --- */
+@media (max-width:900px){ 
+    .cards{grid-template-columns:repeat(2,1fr)} 
+}
+
+@media (max-width:600px){
+    .menu{display:none}
+    .cards{grid-template-columns:1fr}
+    .hero{min-height:50vh}
+
+    /* Το Chat Panel να πιάνει περισσότερο χώρο στο κινητό */
+    .chat-panel {
+        height: 82vh !important; 
+        width: 94% !important; 
+        right: 3% !important; 
+        left: 3% !important; 
+        bottom: 85px !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
     }
+
+    /* Αποτροπή Zoom και καλύτερη ανάγνωση */
+    #chatField {
+        font-size: 16px !important; 
+        padding: 14px !important;
+    }
+
+    .msg {
+        max-width: 88% !important;
+        font-size: 15px !important;
+    }
+
+    .chat-header {
+        padding: 15px !important;
+    }
+}
 
     /* ΜΟΝΟ για κουμπιά μέσα σε bot μηνύματα (όπως τα Παραδείγματα) */
 .msg.bot .quick-reply-btn{
@@ -488,7 +517,24 @@
   gap:12px;
 }
 
+/* Μέσα στο @media (max-width:600px) πρόσθεσε αυτά: */
 
+.accessibility-panel {
+    width: 90% !important;  /* Να πιάνει το 90% της οθόνης */
+    right: 5% !important;   /* Να κεντράρεται (5% από δεξιά + 5% από αριστερά) */
+    left: 5% !important;
+    bottom: 100px !important; /* Να ανέβει λίγο πιο πάνω από το κουμπί του chat */
+    box-sizing: border-box !important;
+}
+
+.accessibility-panel h3 {
+    font-size: 1.1rem !important; /* Μικραίνει λίγο ο τίτλος */
+}
+
+.accessibility-panel button {
+    padding: 12px !important; /* Μεγαλώνουν τα κουμπιά για να πατιούνται εύκολα */
+    font-size: 14px !important;
+}
 </style>
 </head>
 <body>
