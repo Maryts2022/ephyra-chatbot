@@ -1232,3 +1232,35 @@ if __name__ == "__main__":
     import uvicorn
     log.info("🚀 Ephyra Chatbot v3.0.0 - Production RAG Edition starting...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+from pydantic import BaseModel
+
+# Μοντέλο για τις απαντήσεις του ερωτηματολογίου
+class SurveyResponse(BaseModel):
+    q1: str
+    q2: str
+    q3: str
+    q4: str
+    q5: str
+    q6: str
+    comments: str
+
+# Το νέο "μονοπάτι" για να στέλνουμε τις απαντήσεις
+@app.post("/submit_survey")
+async def submit_survey(data: SurveyResponse):
+    conn = get_db_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO survey_results (q1, q2, q3, q4, q5, q6, comments) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (data.q1, data.q2, data.q3, data.q4, data.q5, data.q6, data.comments)
+        )
+        conn.commit()
+        return {"status": "success", "message": "Survey saved successfully!"}
+    except Exception as e:
+        conn.rollback()
+        return {"status": "error", "message": str(e)}
+    finally:
+        cur.close()
+        return_db_conn(conn)
