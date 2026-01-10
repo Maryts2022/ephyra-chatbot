@@ -511,11 +511,9 @@ button.secondary{
   </form>
 
   <script>
+const API_URL = ""; 
 
-   
-    const API_URL = "";
-
-    // Επιτρέπει ΜΟΝΟ 1 checkbox ανά section
+    // --- 1. ΛΕΙΤΟΥΡΓΙΑ CHECKBOXES (Επιτρέπει μόνο 1 επιλογή ανά ερώτηση) ---
     document.querySelectorAll('section.question').forEach(section => {
       const checkboxes = section.querySelectorAll('input[type="checkbox"]');
       checkboxes.forEach(cb => {
@@ -529,7 +527,7 @@ button.secondary{
       });
     });
 
-    // Helpers
+    // --- 2. HELPERS (Βοηθητικές συναρτήσεις) ---
     function getCheckedValue(name){
       const checked = document.querySelector(`input[name="${name}"]:checked`);
       return checked ? checked.value : null;
@@ -538,87 +536,98 @@ button.secondary{
       document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = false);
     }
 
-    // Show/hide sections based on "usedBot"
+    // --- 3. ΕΜΦΑΝΙΣΗ/ΑΠΟΚΡΥΨΗ ΕΝΟΤΗΤΩΝ (Αν πατήσει "Ναι" στο Bot) ---
     const scenariosSection = document.getElementById('scenariosSection');
     const mainQuestions = document.getElementById('mainQuestions');
+    const optionalBox = document.getElementById('optionalBox'); // Αν υπάρχει
 
     document.querySelectorAll('input[name="usedBot"]').forEach(cb => {
       cb.addEventListener('change', () => {
         const val = getCheckedValue('usedBot');
 
         if (val === 'yes') {
-          scenariosSection.classList.remove('hidden');
-          mainQuestions.classList.remove('hidden');
+          if(scenariosSection) scenariosSection.classList.remove('hidden');
+          if(mainQuestions) mainQuestions.classList.remove('hidden');
+          if(optionalBox) optionalBox.classList.remove('hidden');
         } else {
-          // Όχι ή τίποτα
-          scenariosSection.classList.add('hidden');
-          mainQuestions.classList.add('hidden');
+          // Όχι ή τίποτα -> Κρύψιμο και καθαρισμός
+          if(scenariosSection) scenariosSection.classList.add('hidden');
+          if(mainQuestions) mainQuestions.classList.add('hidden');
+          if(optionalBox) optionalBox.classList.add('hidden');
 
           clearGroup('timesUsed');
-
-          // καθάρισμα των q1..q15
           for (let i = 1; i <= 15; i++) clearGroup('q' + i);
         }
       });
     });
 
-// ✅ ΝΕΟΣ ΚΩΔΙΚΑΣ: Υποβολή στο Railway (Αντικαθιστά το LocalStorage)
-document.getElementById('questionnaire').addEventListener('submit', async (e) => {
-    e.preventDefault();
+    // --- 4. ΥΠΟΒΟΛΗ ΦΟΡΜΑΣ (Το νέο κομμάτι με το Loading & Friendly Error) ---
+    // Προσοχή: Εδώ χρησιμοποιούμε το ID "questionnaire" όπως το έχεις εσύ
+    const form = document.getElementById('questionnaire');
 
-    // 1. Συλλογή των 15 απαντήσεων και των δημογραφικών
-    const surveyData = {
-        usedBot: document.querySelector('input[name="usedBot"]:checked')?.value || "no",
-        usageContext: document.getElementById('usageContext')?.value || "N/A",
-        scenarios: document.querySelector('input[name="timesUsed"]:checked')?.value || "None",
-        comments: document.getElementById('comments')?.value || "",
-        q1: parseInt(document.querySelector('input[name="q1"]:checked')?.value || "0"),
-        q2: parseInt(document.querySelector('input[name="q2"]:checked')?.value || "0"),
-        q3: parseInt(document.querySelector('input[name="q3"]:checked')?.value || "0"),
-        q4: parseInt(document.querySelector('input[name="q4"]:checked')?.value || "0"),
-        q5: parseInt(document.querySelector('input[name="q5"]:checked')?.value || "0"),
-        q6: parseInt(document.querySelector('input[name="q6"]:checked')?.value || "0"),
-        q7: parseInt(document.querySelector('input[name="q7"]:checked')?.value || "0"),
-        q8: parseInt(document.querySelector('input[name="q8"]:checked')?.value || "0"),
-        q9: parseInt(document.querySelector('input[name="q9"]:checked')?.value || "0"),
-        q10: parseInt(document.querySelector('input[name="q10"]:checked')?.value || "0"),
-        q11: parseInt(document.querySelector('input[name="q11"]:checked')?.value || "0"),
-        q12: parseInt(document.querySelector('input[name="q12"]:checked')?.value || "0"),
-        q13: parseInt(document.querySelector('input[name="q13"]:checked')?.value || "0"),
-        q14: parseInt(document.querySelector('input[name="q14"]:checked')?.value || "0"),
-        q15: parseInt(document.querySelector('input[name="q15"]:checked')?.value || "0")
-    };
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Σταματάμε το refresh
 
-    try {
-        // 2. Αποστολή στο Railway API
-        const response = await fetch(`${API_URL}/submit_survey`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(surveyData)
+            // Συλλογή Δεδομένων
+            const surveyData = {
+                usedBot: getCheckedValue('usedBot') || "no",
+                usageContext: document.getElementById('usageContext')?.value || "N/A",
+                scenarios: getCheckedValue('timesUsed') || "None", // Προσοχή στο name
+                comments: document.getElementById('comments')?.value || ""
+            };
+
+            // Συλλογή q1-q15
+            for (let i = 1; i <= 15; i++) {
+                let val = getCheckedValue(`q${i}`);
+                surveyData[`q${i}`] = val ? parseInt(val) : 0;
+            }
+
+            // Εφέ στο κουμπί
+            const submitBtn = document.querySelector('.submit-btn') || document.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn ? submitBtn.innerText : "Υποβολή";
+            
+            if(submitBtn) {
+                submitBtn.innerText = "⏳ Αποστολή...";
+                submitBtn.disabled = true;
+            }
+
+            try {
+                // Αποστολή στο Railway
+                const response = await fetch(`${API_URL}/submit_survey`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(surveyData)
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    alert("✅ Ευχαριστούμε! Η γνώμη σας καταγράφηκε επιτυχώς.");
+                    e.target.reset();
+                    window.scrollTo(0, 0);
+                    
+                    // Κρύβουμε ξανά τα τμήματα
+                    if(scenariosSection) scenariosSection.classList.add('hidden');
+                    if(mainQuestions) mainQuestions.classList.add('hidden');
+                    if(optionalBox) optionalBox.classList.add('hidden');
+
+                } else {
+                    throw new Error(result.message || "Server Error");
+                }
+            } catch (error) {
+                console.error("Submission Error:", error);
+                // Το φιλικό μήνυμα που ήθελες
+                alert("⚠️ Υπήρξε μια μικρή καθυστέρηση στη σύνδεση. Παρακαλώ δοκιμάστε να πατήσετε 'Υποβολή' ξανά.");
+            } finally {
+                // Επαναφορά κουμπιού
+                if(submitBtn) {
+                    submitBtn.innerText = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+            }
         });
-
-        const result = await response.json();
-
-        if (result.status === 'success') {
-            alert("✅ Το ερωτηματολόγιο στάλθηκε και αποθηκεύτηκε στη βάση δεδομένων!");
-            e.target.reset();
-            // Κρύβουμε τα τμήματα της φόρμας όπως πριν
-            scenariosSection.classList.add('hidden');
-            mainQuestions.classList.add('hidden');
-            optionalBox.classList.add('hidden');
-        } else {
-            alert("❌ Σφάλμα κατά την αποθήκευση: " + result.message);
-        }
-    } catch (error) {
-        console.error("Fetch Error:", error);
-        alert("❌ Αδυναμία σύνδεσης με το Railway. Ελέγξτε αν το Backend τρέχει.");
     }
-});
-
-// Κρύβουμε τα παλιά κουμπιά που δεν χρειάζονται πλέον
-if(viewBtn) viewBtn.style.display = "none";
-if(clearBtn) clearBtn.style.display = "none";
-  
   </script>
 </div>
 

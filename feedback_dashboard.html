@@ -505,41 +505,24 @@
     
     <!-- Feedback Table -->
     <div class="feedback-table">
-      <h2>📋 Πρόσφατα Feedback</h2>
-      <div class="filter-bar">
-        <select id="filterSentiment" onchange="filterTable()">
-          <option value="all">Όλα τα feedback</option>
-          <option value="positive">Μόνο θετικά 👍</option>
-          <option value="negative">Μόνο αρνητικά 👎</option>
-        </select>
-        <select id="filterDays" onchange="refreshData()">
-          <option value="7">Τελευταίες 7 ημέρες</option>
-          <option value="30" selected>Τελευταίες 30 ημέρες</option>
-          <option value="90">Τελευταίες 90 ημέρες</option>
-        </select>
-      </div>
-      
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-    <th>ID</th>
-    <th>Timestamp</th>
-    <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th>
-    <th>Q6</th><th>Q7</th><th>Q8</th><th>Q9</th><th>Q10</th>
-    <th>Q11</th><th>Q12</th><th>Q13</th><th>Q14</th><th>Q15</th>
-    <th>Σχόλια</th>
-  </tr>
-          </thead>
-          <tbody id="surveyTableBody">
-            <tr>
-              <td colspan="7" class="loading">Φόρτωση δεδομένων...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+  <h2>💬 Ιστορικό Chat & Feedback Χρηστών</h2>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Ημερομηνία</th>
+          <th>Ερώτηση Χρήστη</th>
+          <th>Απάντηση Bot</th>
+          <th>👍/👎</th>
+        </tr>
+      </thead>
+      <tbody id="chatTableBody">
+        <tr><td colspan="5" style="text-align:center; padding: 20px;">Φόρτωση συνομιλιών...</td></tr>
+      </tbody>
+    </table>
   </div>
+</div>
 
 <div class="divide-line">
   <div class="container">
@@ -572,144 +555,93 @@
 </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
  <script>
-    const API_URL = "";
-    let allFeedbackData = [];
+    const API_URL = ""; 
 
-    // 1. Φόρτωση Δεδομένων από το νέο endpoint /survey_results
-    async function loadData() {
-      try {
-        const response = await fetch(`${API_URL}/survey_results`);
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        allFeedbackData = data;
-        
-        // Ενημέρωση KPIs (Καρτέλες στο πάνω μέρος)
-        document.getElementById('totalFeedback').textContent = data.length.toLocaleString('el-GR');
-        document.getElementById('uniqueUsers').textContent = data.length.toLocaleString('el-GR');
-        document.getElementById('satisfactionRate').textContent = '100%';
-        
-        // Update table
-        updateTable(allFeedbackData);
-        
-      } catch (error) {
-        console.error('Error:', error);
-        const tbody = document.getElementById('feedbackTableBody');
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #ff6b6b; padding: 20px;">Σφάλμα σύνδεσης με τη βάση</td></tr>';
-      }
-    }
+  // --- 1. ΓΕΜΙΖΕΙ ΤΟΝ ΠΑΝΩ ΠΙΝΑΚΑ (CHAT & THUMBS) ---
+  async function loadChatData() {
+    try {
+      // Ζητάμε τα Chat logs
+      const res = await fetch(`${API_URL}/feedback/stats?detailed=true`);
+      const data = await res.json();
+      
+      const tbody = document.getElementById('chatTableBody'); // Στοχεύει τον ΠΑΝΩ πίνακα
+      const chats = data.recent_feedback || [];
 
-    // 2. Εμφάνιση των απαντήσεων του ερωτηματολογίου στον πίνακα
-    function updateTable(feedbackData) {
-      const tbody = document.getElementById('feedbackTableBody');
-      if (!feedbackData || feedbackData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">Δεν βρέθηκαν δεδομένα</td></tr>';
+      if (chats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Δεν υπάρχουν πρόσφατες συνομιλίες.</td></tr>';
         return;
       }
-      
-      tbody.innerHTML = feedbackData.map(item => `
+
+      // Εμφανίζει μόνο ερώτηση, απάντηση και το χεράκι (thumb)
+      tbody.innerHTML = chats.map(item => `
         <tr>
-          <td>#${item.id}</td>
-          <td><span class="sentiment-badge sentiment-positive">✅ Survey</span></td>
-          <td><div class="response-preview" title="${item.q1 || ''}">${escapeHtml(item.q1 || '-')}</div></td>
-          <td><div class="response-preview" title="${item.q2 || ''}">${escapeHtml(item.q2 || '-')}</div></td>
-          <td><div class="response-preview" title="${item.q3 || ''}">${escapeHtml(item.q3 || '-')}</div></td>
-          <td><div class="response-preview" title="${item.q4 || ''}">${escapeHtml(item.q4 || '-')}</div></td>
-          <td style="font-size: 0.85em; color: #8aa4c0;">${item.timestamp}</td>
+          <td><span style="color:#8aa4c0;">#${item.id}</span></td>
+          <td style="font-size:12px;">${item.timestamp ? item.timestamp.replace('T', ' ').substring(0,16) : '-'}</td>
+          <td style="color:#fff; font-weight:500;">${item.user_question || '-'}</td>
+          <td style="color:#b5c5d9; font-size:13px;">${item.bot_response ? item.bot_response.substring(0, 60) + '...' : '-'}</td>
+          <td style="text-align:center;">
+            ${item.is_positive 
+              ? '<span style="font-size:18px;">👍</span>' 
+              : '<span style="font-size:18px;">👎</span>'}
+          </td>
         </tr>
       `).join('');
+    } catch (e) {
+      console.error("Chat Error:", e);
     }
+  }
 
-    function filterTable() {
-      updateTable(allFeedbackData);
-    }
+  // --- 2. ΓΕΜΙΖΕΙ ΤΟΝ ΚΑΤΩ ΠΙΝΑΚΑ (ΕΡΩΤΗΜΑΤΟΛΟΓΙΟ) ---
+  async function loadSurveyResults() {
+    try {
+      const res = await fetch(`${API_URL}/survey_results`);
+      const data = await res.json();
+      
+      // Στοχεύει τον ΚΑΤΩ πίνακα (αυτόν που έφτιαξες εσύ)
+      const tbody = document.getElementById('surveyTableBody'); 
 
-    function escapeHtml(text) {
-      if (!text) return '-';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    async function refreshData() {
-      await loadData();
-    }
-
-    async function exportData() {
-      alert('Η λειτουργία εξαγωγής CSV θα προσαρμοστεί σύντομα για το Survey.');
-    }
-
-    async function clearAllFeedback() {
-      if (!confirm('⚠️ Είστε σίγουρος; Αυτό θα διαγράψει ΟΛΑ τα δεδομένα από το Railway!')) {
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="18" style="text-align:center; padding:20px;">Δεν υπάρχουν απαντήσεις ερωτηματολογίου.</td></tr>';
         return;
       }
-      alert('Η διαγραφή απενεργοποιήθηκε προσωρινά για ασφάλεια.');
+
+      tbody.innerHTML = data.map(item => `
+        <tr>
+          <td>#${item.id}</td>
+          <td style="font-size:12px">${item.timestamp}</td>
+          <td class="q-cell">${item.q1 || '-'}</td>
+          <td class="q-cell">${item.q2 || '-'}</td>
+          <td class="q-cell">${item.q3 || '-'}</td>
+          <td class="q-cell">${item.q4 || '-'}</td>
+          <td class="q-cell">${item.q5 || '-'}</td>
+          <td class="q-cell">${item.q6 || '-'}</td>
+          <td class="q-cell">${item.q7 || '-'}</td>
+          <td class="q-cell">${item.q8 || '-'}</td>
+          <td class="q-cell">${item.q9 || '-'}</td>
+          <td class="q-cell">${item.q10 || '-'}</td>
+          <td class="q-cell">${item.q11 || '-'}</td>
+          <td class="q-cell">${item.q12 || '-'}</td>
+          <td class="q-cell">${item.q13 || '-'}</td>
+          <td class="q-cell">${item.q14 || '-'}</td>
+          <td class="q-cell">${item.q15 || '-'}</td>
+          <td style="font-size:12px; max-width:200px;">${item.comments || '-'}</td>
+        </tr>
+      `).join('');
+
+    } catch (e) {
+      console.error("Survey Error:", e);
     }
+  }
 
-    // Αρχική φόρτωση
-    loadData();
-
-    // Ανανέωση δεδομένων αυτόματα κάθε 20 δευτερόλεπτα
-    setInterval(refreshData, 20000);
-
-    // Συνάρτηση για να καθαρίζει το κείμενο από περίεργους χαρακτήρες (ασφάλεια)
-    function escapeHtml(text) {
-      if (!text) return '-';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    // Φόρτωση των αποτελεσμάτων από το Railway
-    async function loadSurveyResults() {
-      try {
-        const response = await fetch(`${API_URL}/survey_results`);
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-        
-        const data = await response.json();
-        const tbody = document.getElementById('surveyTableBody');
-        
-        if (!data || data.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 20px;">Δεν βρέθηκαν αποθηκευμένα αποτελέσματα στη βάση.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = data.map(item => `
-          <tr>
-             <td>#${item.id}</td>
-            <td>${item.timestamp}</td>
-              <td class="q-cell">${item.q1 || '-'}</td>
-            <td class="q-cell">${item.q2 || '-'}</td>
-            <td class="q-cell">${item.q3 || '-'}</td>
-            <td class="q-cell">${item.q4 || '-'}</td>
-            <td class="q-cell">${item.q5 || '-'}</td>
-           <td class="q-cell">${item.q6 || '-'}</td>
-            <td class="q-cell">${item.q7 || '-'}</td>
-           <td class="q-cell">${item.q8 || '-'}</td>
-           <td class="q-cell">${item.q9 || '-'}</td>
-           <td class="q-cell">${item.q10 || '-'}</td>
-           <td class="q-cell">${item.q11 || '-'}</td>
-           <td class="q-cell">${item.q12 || '-'}</td>
-            <td class="q-cell">${item.q13 || '-'}</td>
-           <td class="q-cell">${item.q14 || '-'}</td>
-           <td class="q-cell">${item.q15 || '-'}</td>
-          <td>${item.comments || '-'}</td>
-  </tr>
-        `).join('');
-
-      } catch (error) {
-        console.error('Error fetching survey:', error);
-        document.getElementById('surveyTableBody').innerHTML = 
-          `<tr><td colspan="9" style="text-align:center; color: #ff6b6b; padding: 20px;">Σφάλμα σύνδεσης: ${error.message}</td></tr>`;
-      }
-    }
-    
-    // Αρχική εκτέλεση μόλις ανοίξει η σελίδα
+  // Ξεκινάμε και τις δύο λειτουργίες
+  loadChatData();       
+  loadSurveyResults();  
+  
+  // Αυτόματη ανανέωση κάθε 10 δευτερόλεπτα
+  setInterval(() => {
+    loadChatData();
     loadSurveyResults();
-
-    // Αυτόματη ανανέωση κάθε 20 δευτερόλεπτα
-    setInterval(loadSurveyResults, 20000);
+  }, 10000);
   </script>
 </body>
 </html>
