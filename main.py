@@ -995,8 +995,10 @@ def shutdown_event():
 # ================== FEEDBACK ENDPOINTS ==================
 
 @app.get("/feedback/stats")
+@app.get("/feedback/stats")
 async def get_feedback_stats(days: int = 30, detailed: bool = False):
     """Get feedback statistics with advanced metrics."""
+    conn = None  # Αρχικοποίηση εκτός του try
     try:
         conn = get_db_conn()
         cursor = conn.cursor()
@@ -1090,29 +1092,30 @@ async def get_feedback_stats(days: int = 30, detailed: bool = False):
         unique_users = user_result[0] if user_result and user_result[0] else 0
         
         # Recent feedback
-        cursor.execute("""
-            SELECT id, user_question, bot_response, is_positive, timestamp, ip_address
-            FROM chatbot_feedback
-            WHERE timestamp >= %s
-            ORDER BY timestamp DESC
-            LIMIT 50
-        """, (since_date,))
-        
         recent_feedback = []
-        for row in cursor.fetchall():
-            recent_feedback.append({
-                "id": row[0],
-                "user_question": row[1] or "",
-                "bot_response": row[2] or "",
-                "is_positive": row[3],
-                "timestamp": row[4].isoformat() if row[4] else None,
-                "ip_address": row[5],
-                "language": "el",
-                "response_time": 1.0
-            })
+        if detailed:
+            cursor.execute("""
+                SELECT id, user_question, bot_response, is_positive, timestamp, ip_address
+                FROM chatbot_feedback
+                WHERE timestamp >= %s
+                ORDER BY timestamp DESC
+                LIMIT 50
+            """, (since_date,))
+            
+            for row in cursor.fetchall():
+                recent_feedback.append({
+                    "id": row[0],
+                    "user_question": row[1] or "",
+                    "bot_response": row[2] or "",
+                    "is_positive": row[3],
+                    "timestamp": row[4].isoformat() if row[4] else None,
+                    "ip_address": row[5],
+                    "language": "el",
+                    "response_time": 1.0
+                })
         
         cursor.close()
-        conn.close()
+        # ΠΡΟΣΟΧΗ: Εδώ σβήσαμε το conn.close() που προκαλούσε το πρόβλημα
         
         return {
             "total_feedback": total,
@@ -1130,118 +1133,16 @@ async def get_feedback_stats(days: int = 30, detailed: bool = False):
             "max_response_time": 3.0,
             "unique_users": unique_users,
             "weekly_active_users": unique_users // 2,
-            "recent_feedback": recent_feedback if detailed else []
+            "recent_feedback": recent_feedback
         }
         
     except Exception as e:
         log.error(f"Error getting feedback stats: {e}")
         return {"error": str(e)}
-        
-        top_issues = [{"category": row[0], "count": row[1]} for row in cursor.fetchall()]
-        
-        # Most frequent questions
-        cursor.execute("""
-            SELECT user_question, COUNT(*) as count
-            FROM chatbot_feedback
-            WHERE timestamp >= %s AND user_question IS NOT NULL AND user_question != ''
-            GROUP BY user_question
-            ORDER BY count DESC
-            LIMIT 5
-        """, (since_date,))
-        
-        top_questions = [{"question": row[0], "count": row[1]} for row in cursor.fetchall()]
-        
-        # Language distribution
-        cursor.execute("""
-            SELECT 
-                CASE WHEN user_question ILIKE '%[αβγδεζηθικλμνξοπρστυφχψω]%' THEN 'el' ELSE 'en' END as lang,
-                COUNT(*) as count
-            FROM chatbot_feedback
-            WHERE timestamp >= %s
-            GROUP BY lang
-        """, (since_date,))
-        
-        lang_dist = {row[0]: row[1] for row in cursor.fetchall()}
-        total_lang = sum(lang_dist.values())
-        language_distribution = {k: round(v/total_lang*100) if total_lang > 0 else 0 
-                                for k, v in lang_dist.items()}
-        
-        # Sentiment trend (compare with previous period)
-        prev_since = since_date - timedelta(days=days)
-        cursor.execute("""
-            SELECT 
-                SUM(CASE WHEN is_positive THEN 1 ELSE 0 END) as positive,
-                COUNT(*) as total
-            FROM chatbot_feedback
-            WHERE timestamp >= %s AND timestamp < %s
-        """, (prev_since, since_date))
-        
-        prev_row = cursor.fetchone()
-        prev_satisfaction = round((prev_row[0] / prev_row[1] * 100)) if prev_row[1] > 0 else 0
-        sentiment_trend = satisfaction_rate - prev_satisfaction
-        
-        # User metrics
-        cursor.execute("""
-            SELECT 
-                COUNT(DISTINCT ip_address) as unique_users,
-                COUNT(DISTINCT CASE WHEN timestamp >= NOW() - interval '7 days' THEN ip_address END) as weekly_active
-            FROM chatbot_feedback
-            WHERE timestamp >= %s
-        """, (since_date,))
-        
-        user_row = cursor.fetchone()
-        unique_users = user_row[0] if user_row[0] else 0
-        weekly_active = user_row[1] if user_row[1] else 0
-        
-        # Recent feedback
-        cursor.execute("""
-            SELECT id, user_question, bot_response, is_positive, timestamp, ip_address, 
-                   CASE WHEN user_question ILIKE '%[αβγδεζηθικλμνξοπρστυφχψω]%' THEN 'el' ELSE 'en' END,
-            FROM chatbot_feedback
-            WHERE timestamp >= %s
-            ORDER BY timestamp DESC
-            LIMIT 50
-        """, (since_date,))
-        
-        recent_feedback = [
-            {
-                "id": row[0],
-                "user_question": row[1],
-                "bot_response": row[2],
-                "is_positive": row[3],
-                "timestamp": row[4].isoformat() if row[4] else None,
-                "ip_address": row[5],
-                "language": row[6],
-                "response_time": row[7]
-            }
-            for row in cursor.fetchall()
-        ]
-        
-        cursor.close()
-        conn.close()
-        
-        return {
-            "total_feedback": total,
-            "positive": positive,
-            "negative": negative,
-            "satisfaction_rate": satisfaction_rate,
-            "daily_data": daily_data,
-            "top_issues": top_issues,
-            "top_questions": top_questions,
-            "language_distribution": language_distribution,
-            "sentiment_trend": sentiment_trend,
-            "sentiment_trend_percent": f"+{sentiment_trend}%" if sentiment_trend > 0 else f"{sentiment_trend}%",
-            "avg_response_time": avg_response_time,
-            "min_response_time": min_response_time,
-            "max_response_time": max_response_time,
-            "unique_users": unique_users,
-            "weekly_active_users": weekly_active,
-            "recent_feedback": recent_feedback if detailed else []
-        }
-        
-    except Exception as e:
-        log.error(f"Error getting feedback stats: {e}")
-        return {"error": str(e)}
+    finally:
+        # ΑΥΤΗ ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ: Επιστροφή στο Pool ό,τι και να γίνει
+        if conn:
+            return_db_conn(conn)
 
 
 @app.get("/feedback/export")
@@ -1360,10 +1261,12 @@ async def submit_survey(data: SurveyResponse):
 # 3. Το "μονοπάτι" για να βλέπουμε τα αποτελέσματα στο Dashboard
 @app.get("/survey_results")
 async def get_survey_final():
-    conn = get_db_conn() # ✅ Χρησιμοποιούμε το σωστό όνομα συνάρτησης
-    cur = conn.cursor()
+    conn = None # Αρχικοποίηση
     try:
-        # Επιλέγουμε id, timestamp, q1-q15 και comments (Σύνολο 18 στήλες)
+        conn = get_db_conn()
+        cur = conn.cursor()
+        
+        # Ζητάμε όλα τα δεδομένα του ερωτηματολογίου
         cur.execute("""
             SELECT id, timestamp, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, comments 
             FROM survey_final 
@@ -1381,14 +1284,19 @@ async def get_survey_final():
                 "q11": r[12], "q12": r[13], "q13": r[14], "q14": r[15], "q15": r[16],
                 "comments": r[17]
             })
-        return results
-    except Exception as e:
-        log.error(f"Error: {e}")
-        return []
-    finally:
+        
         cur.close()
-        return_db_conn(conn)
+        return results
 
+    except Exception as e:
+        # Αν γίνει λάθος, το καταγράφουμε και επιστρέφουμε κενή λίστα
+        logging.error(f"Error getting survey results: {e}")
+        return []
+        
+    finally:
+        # Η ΣΗΜΑΝΤΙΚΗ ΔΙΟΡΘΩΣΗ: Επιστροφή στο Pool!
+        if conn:
+            return_db_conn(conn)
 # ✅ 3. ΤΕΛΕΥΤΑΙΟ ΣΤΟ ΑΡΧΕΙΟ: Η ΕΚΚΙΝΗΣΗ
 if __name__ == "__main__":
     import uvicorn
