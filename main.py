@@ -33,6 +33,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import csv
 
+
+ 
 # Δημιουργούμε μια λίστα για να αποθηκεύσουμε τις ερωταπαντήσεις
 knowledge_base = []
 
@@ -41,8 +43,14 @@ with open("QA_chatbot.csv", mode="r", encoding="utf-8") as f:
     reader = csv.DictReader(f)
     for row in reader:
         knowledge_base.append(row)
+
+
 # ================== Configuration ==================
 load_dotenv(dotenv_path=Path(__file__).with_name(".env"), override=True)
+
+
+
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger("ephyra")
@@ -168,7 +176,36 @@ def return_db_conn(conn):
             conn_pool.putconn(conn)
         except Exception as e:
             log.error(f"❌ Error returning connection to pool: {e}")
+# --- AYTOMATH ΔΗΜΙΟΥΡΓΙΑ ΠΙΝΑΚΑ SURVEY ---
+def init_survey_db():
+    """Δημιουργεί αυτόματα τον πίνακα survey_results αν δεν υπάρχει με όλες τις στήλες."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS survey_results (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                used_bot TEXT,
+                usage_context TEXT,
+                scenarios_tested TEXT,
+                q1 INTEGER, q2 INTEGER, q3 INTEGER, q4 INTEGER, q5 INTEGER,
+                q6 INTEGER, q7 INTEGER, q8 INTEGER, q9 INTEGER, q10 INTEGER,
+                q11 INTEGER, q12 INTEGER, q13 INTEGER, q14 INTEGER, q15 INTEGER,
+                comments TEXT
+            );
+        """)
+        conn.commit()
+        log.info("✅ Database table 'survey_results' is ready with all 15 questions!")
+    except Exception as e:
+        log.error(f"❌ Error initializing survey table: {e}")
+    finally:
+        cur.close()
+        return_db_conn(conn)
 
+init_survey_db()
+
+ 
 # 3. Τα Aliases (για να μη χτυπάει πουθενά ο κώδικας)
 get_db_connection = get_db_conn
 return_db_connection = return_db_conn
@@ -1228,65 +1265,95 @@ async def clear_all_feedback():
         if conn:
             return_db_conn(conn)
 
-if __name__ == "__main__":
-    import uvicorn
-    log.info("🚀 Ephyra Chatbot v3.0.0 - Production RAG Edition starting...")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
 
 from pydantic import BaseModel
 
-# Μοντέλο για τις απαντήσεις του ερωτηματολογίου
-class SurveyResponse(BaseModel):
-    q1: str
-    q2: str
-    q3: str
-    q4: str
-    q5: str
-    q6: str
-    comments: str
+# --- SURVEY SYSTEM (START) ---
 
-# Το νέο "μονοπάτι" για να στέλνουμε τις απαντήσεις
+# 1. Ορισμός των πεδίων που περιμένουμε από το ερωτηματολόγιο
+class SurveyResponse(BaseModel):
+    usedBot: str
+    usageContext: str
+    scenarios: str
+    q1: int
+    q2: int
+    q3: int
+    q4: int
+    q5: int
+    q6: int
+    q7: int
+    q8: int
+    q9: int
+    q10: int
+    q11: int
+    q12: int
+    q13: int
+    q14: int
+    q15: int
+    comments: Optional[str] = ""
+
+# 2. Το "μονοπάτι" για την αποθήκευση στη βάση
 @app.post("/submit_survey")
 async def submit_survey(data: SurveyResponse):
-    conn = get_db_conn()
+    conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute(
-            "INSERT INTO survey_results (q1, q2, q3, q4, q5, q6, comments) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-            (data.q1, data.q2, data.q3, data.q4, data.q5, data.q6, data.comments)
-        )
+        # Χρησιμοποιούμε το όνομα survey_results που έχεις στο Railway
+        query = """
+            INSERT INTO survey_results 
+            (used_bot, usage_context, scenarios_tested, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, comments)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        cur.execute(query, (
+            data.usedBot, data.usageContext, data.scenarios,
+            data.q1, data.q2, data.q3, data.q4, data.q5,
+            data.q6, data.q7, data.q8, data.q9, data.q10,
+            data.q11, data.q12, data.q13, data.q14, data.q15,
+            data.comments
+        ))
         conn.commit()
         return {"status": "success", "message": "Survey saved successfully!"}
     except Exception as e:
-        conn.rollback()
+        if conn: conn.rollback()
+        log.error(f"Survey error: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         cur.close()
         return_db_conn(conn)
 
-
-        
+# 3. Το "μονοπάτι" για να βλέπουμε τα αποτελέσματα στο Dashboard
 @app.get("/survey_results")
 async def get_survey_results():
-    conn = get_db_conn()
+    conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Παίρνουμε όλες τις απαντήσεις από τον πίνακα που φτιάξαμε
-        cur.execute("SELECT id, timestamp, q1, q2, q3, q4, q5, comments FROM survey_results ORDER BY timestamp DESC")
+        # Παίρνουμε τα δεδομένα από τον σωστό πίνακα survey_results
+        cur.execute("SELECT * FROM survey_results ORDER BY timestamp DESC")
         rows = cur.fetchall()
         
         results = []
         for r in rows:
             results.append({
                 "id": r[0],
-                "timestamp": r[1].strftime("%Y-%m-%d %H:%M:%S"),
-                "q1": r[2], "q2": r[3], "q3": r[4], "q4": r[5], "q5": r[6],
-                "comments": r[7]
+                "timestamp": r[1].strftime("%Y-%m-%d %H:%M:%S") if r[1] else "",
+                "usedBot": r[2], "usageContext": r[3], "scenarios": r[4],
+                "q1": r[5], "q2": r[6], "q3": r[7], "q4": r[8], "q5": r[9],
+                "q6": r[10], "q7": r[11], "q8": r[12], "q9": r[13], "q10": r[14],
+                "q11": r[15], "q12": r[16], "q13": r[17], "q14": r[18], "q15": r[19],
+                "comments": r[20]
             })
         return results
     except Exception as e:
+        log.error(f"Error fetching results: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         cur.close()
         return_db_conn(conn)
+
+# ✅ 3. ΤΕΛΕΥΤΑΙΟ ΣΤΟ ΑΡΧΕΙΟ: Η ΕΚΚΙΝΗΣΗ
+if __name__ == "__main__":
+    import uvicorn
+    log.info("🚀 Ephyra Chatbot v3.0.0 - Production RAG Edition starting...")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# --- SURVEY SYSTEM (END) ---

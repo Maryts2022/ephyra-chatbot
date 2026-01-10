@@ -18,6 +18,7 @@
     .container {
       max-width: 1600px;
       margin: 0 auto;
+      padding: 10px 0px;
     }
     
     header {
@@ -322,6 +323,86 @@
         grid-template-columns: 1fr;
       }
     }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%);
+      color: #e3e8ef;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1600px; margin: 0 auto; }
+    
+    header {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-title {
+      font-size: 24px;
+      margin: 40px 0 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #1e90ff;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .data-table-wrapper {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      overflow-x: auto; /* Επιτρέπει το scroll αν οι ερωτήσεις είναι πολλές */
+      margin-bottom: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .divide-line {
+      background-color: rgba(28, 45, 68, 0.95);
+      background: 1; /* Πολύ ελαφρύ διάφανο λευκό */
+    backdrop-filter: blur(5px); /* Εφέ θολώματος */
+    border-top: 4px solid var(--primary); /* Μια έντονη γραμμή στην κορυφή */
+    border-radius:15px;
+    padding: 30px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5); /* Σκιά που "σπρώχνει" προς τα πάνω */}
+
+    table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+    th { 
+      text-align: left; 
+      padding: 15px; 
+      background: rgba(255,255,255,0.07); 
+      color: #8aa4c0; 
+      font-size: 11px; 
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
+    }
+    td { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+    
+    tr:hover { background: rgba(255,255,255,0.02); }
+
+    .btn-refresh {
+      background: #1e90ff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-refresh:hover { background: #0c67c2; transform: translateY(-2px); }
+
+    .q-cell { text-align: center; font-weight: 600; color: #1e90ff; }
   </style>
 </head>
 <body>
@@ -460,7 +541,36 @@
       </div>
     </div>
   </div>
-  
+
+<div class="divide-line">
+  <div class="container">
+    <header>
+      <h1>📊 Dashboard Διαχείρισης Αποτελεσμάτων Ερωτηματολογίου</h1>
+      <button class="btn-refresh" onclick="loadSurveyResults()">🔄 Ανανέωση RESULTS</button>
+    </header>
+
+    <div class="data-table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Ημερομηνία</th>
+            <th title="Ερώτηση 1">Q1</th>
+            <th title="Ερώτηση 2">Q2</th>
+            <th title="Ερώτηση 3">Q3</th>
+            <th title="Ερώτηση 4">Q4</th>
+            <th title="Ερώτηση 5">Q5</th>
+            <th title="Ερώτηση 6">Q6</th>
+            <th>Σχόλια</th>
+          </tr>
+        </thead>
+        <tbody id="surveyTableBody">
+          <tr><td colspan="9" style="text-align:center; padding: 40px; color: #8aa4c0;">Φόρτωση δεδομένων από Railway...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
  <script>
     const API_URL = window.location.origin;
@@ -543,6 +653,60 @@
 
     // Ανανέωση δεδομένων αυτόματα κάθε 20 δευτερόλεπτα
     setInterval(refreshData, 20000);
+
+    const API_URL = window.location.origin;
+
+    // Συνάρτηση για να καθαρίζει το κείμενο από περίεργους χαρακτήρες (ασφάλεια)
+    function escapeHtml(text) {
+      if (!text) return '-';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Φόρτωση των αποτελεσμάτων από το Railway
+    async function loadSurveyResults() {
+      try {
+        const response = await fetch(`${API_URL}/survey_results`);
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        
+        const data = await response.json();
+        const tbody = document.getElementById('surveyTableBody');
+        
+        if (!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 20px;">Δεν βρέθηκαν αποθηκευμένα αποτελέσματα στη βάση.</td></tr>';
+          return;
+        }
+
+        // Δημιουργία των γραμμών του πίνακα
+        tbody.innerHTML = data.map(item => `
+          <tr>
+            <td style="font-weight: bold; color: #fff;">#${item.id}</td>
+            <td style="color: #8aa4c0; font-size: 12px;">${item.timestamp}</td>
+            <td class="q-cell">${item.q1 || '-'}</td>
+            <td class="q-cell">${item.q2 || '-'}</td>
+            <td class="q-cell">${item.q3 || '-'}</td>
+            <td class="q-cell">${item.q4 || '-'}</td>
+            <td class="q-cell">${item.q5 || '-'}</td>
+            <td class="q-cell">${item.q6 || '-'}</td>
+            <td style="color: #b5c5d9; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.comments || ''}">
+              ${escapeHtml(item.comments)}
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (error) {
+        console.error('Error fetching survey:', error);
+        document.getElementById('surveyTableBody').innerHTML = 
+          `<tr><td colspan="9" style="text-align:center; color: #ff6b6b; padding: 20px;">Σφάλμα σύνδεσης: ${error.message}</td></tr>`;
+      }
+    }
+
+    // Αρχική εκτέλεση μόλις ανοίξει η σελίδα
+    loadSurveyResults();
+
+    // Αυτόματη ανανέωση κάθε 20 δευτερόλεπτα
+    setInterval(loadSurveyResults, 20000);
   </script>
 </body>
 </html>

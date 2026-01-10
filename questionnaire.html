@@ -511,6 +511,10 @@ button.secondary{
   </form>
 
   <script>
+
+   
+    const API_URL = "https://ephyra-chatbot-production.up.railway.app";
+
     // Επιτρέπει ΜΟΝΟ 1 checkbox ανά section
     document.querySelectorAll('section.question').forEach(section => {
       const checkboxes = section.querySelectorAll('input[type="checkbox"]');
@@ -558,126 +562,63 @@ button.secondary{
       });
     });
 
-    // Υποβολή + Αποθήκευση τοπικά (LocalStorage)
-    document.getElementById('questionnaire').addEventListener('submit', (e) => {
-      e.preventDefault();
+// ✅ ΝΕΟΣ ΚΩΔΙΚΑΣ: Υποβολή στο Railway (Αντικαθιστά το LocalStorage)
+document.getElementById('questionnaire').addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-      hideOptionalDemographics();   // ✅ ΝΕΑ ΓΡΑΜΜΗ
+    // 1. Συλλογή των 15 απαντήσεων και των δημογραφικών
+    const surveyData = {
+        usedBot: document.querySelector('input[name="usedBot"]:checked')?.value || "no",
+        usageContext: document.getElementById('usageContext')?.value || "N/A",
+        scenarios: document.querySelector('input[name="timesUsed"]:checked')?.value || "None",
+        comments: document.getElementById('comments')?.value || "",
+        q1: parseInt(document.querySelector('input[name="q1"]:checked')?.value || "0"),
+        q2: parseInt(document.querySelector('input[name="q2"]:checked')?.value || "0"),
+        q3: parseInt(document.querySelector('input[name="q3"]:checked')?.value || "0"),
+        q4: parseInt(document.querySelector('input[name="q4"]:checked')?.value || "0"),
+        q5: parseInt(document.querySelector('input[name="q5"]:checked')?.value || "0"),
+        q6: parseInt(document.querySelector('input[name="q6"]:checked')?.value || "0"),
+        q7: parseInt(document.querySelector('input[name="q7"]:checked')?.value || "0"),
+        q8: parseInt(document.querySelector('input[name="q8"]:checked')?.value || "0"),
+        q9: parseInt(document.querySelector('input[name="q9"]:checked')?.value || "0"),
+        q10: parseInt(document.querySelector('input[name="q10"]:checked')?.value || "0"),
+        q11: parseInt(document.querySelector('input[name="q11"]:checked')?.value || "0"),
+        q12: parseInt(document.querySelector('input[name="q12"]:checked')?.value || "0"),
+        q13: parseInt(document.querySelector('input[name="q13"]:checked')?.value || "0"),
+        q14: parseInt(document.querySelector('input[name="q14"]:checked')?.value || "0"),
+        q15: parseInt(document.querySelector('input[name="q15"]:checked')?.value || "0")
+    };
 
-      const submission = {
-        submittedAt: new Date().toISOString(),
-        usedBot: getCheckedValue('usedBot'),
-        scenarios: getCheckedValue('timesUsed'),
-        answers: {}
-      };
+    try {
+        // 2. Αποστολή στο Railway API
+        const response = await fetch(`${API_URL}/submit_survey`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(surveyData)
+        });
 
-      for (let i = 1; i <= 15; i++) {
-        submission.answers['q' + i] = getCheckedValue('q' + i);
-      }
+        const result = await response.json();
 
-      const key = "questionnaire_submissions";
-      const existing = JSON.parse(localStorage.getItem(key) || "[]");
-      existing.push(submission);
-      localStorage.setItem(key, JSON.stringify(existing));
-
-      alert("Αποθηκεύτηκε τοπικά ✅");
-
-      // Reset + κρύψιμο
-      e.target.reset();
-      scenariosSection.classList.add('hidden');
-      mainQuestions.classList.add('hidden');
-    });
-
-    // Προβολή/Διαγραφή αποτελεσμάτων από LocalStorage
-const viewBtn = document.getElementById('viewResultsBtn');
-const clearBtn = document.getElementById('clearResultsBtn');
-const box = document.getElementById('resultsBox');
-
-viewBtn.addEventListener('click', () => {
-  hideOptionalDemographics();   // ✅ ΝΕΑ ΓΡΑΜΜΗ
-  const key = "questionnaire_submissions";
-  const data = JSON.parse(localStorage.getItem(key) || "[]");
-
-  box.style.display = "block";
-
-  if (!data.length) {
-    box.innerHTML = "<p>Δεν υπάρχουν αποθηκευμένα αποτελέσματα.</p>";
-    return;
-  }
-
-  const rows = data.map((sub, idx) => {
-    const a = sub.answers || {};
-    return `
-      <tr>
-        <td>${idx + 1}</td>
-        <td>${new Date(sub.submittedAt).toLocaleString()}</td>
-        <td>${sub.usedBot || ""}</td>
-        <td>${sub.scenarios || ""}</td>
-        <td>${a.q1 ?? ""}</td>
-        <td>${a.q2 ?? ""}</td>
-        <td>${a.q3 ?? ""}</td>
-        <td>${a.q4 ?? ""}</td>
-        <td>${a.q5 ?? ""}</td>
-        <td>${a.q6 ?? ""}</td>
-        <td>${a.q7 ?? ""}</td>
-        <td>${a.q8 ?? ""}</td>
-        <td>${a.q9 ?? ""}</td>
-        <td>${a.q10 ?? ""}</td>
-        <td>${a.q11 ?? ""}</td>
-        <td>${a.q12 ?? ""}</td>
-        <td>${a.q13 ?? ""}</td>
-        <td>${a.q14 ?? ""}</td>
-        <td>${a.q15 ?? ""}</td>
-      </tr>
-    `;
-  }).join("");
-
-  box.innerHTML = `
-    <div style="overflow:auto; border:1px solid #ddd; border-radius:10px;">
-      <table style="border-collapse:collapse; width:100%; min-width:1100px;">
-        <thead>
-          <tr>
-            <th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">#</th>
-            <th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">Ημ/νία</th>
-            <th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">Χρήση</th>
-            <th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">Σενάρια</th>
-            ${Array.from({length:15}, (_,i)=>`<th style="border-bottom:1px solid #ddd; padding:10px; text-align:left;">Q${i+1}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-    </div>
-  `;
-});
-
-
-clearBtn.addEventListener('click', () => {
-  const key = "questionnaire_submissions";
-  localStorage.removeItem(key);
-  box.style.display = "block";
-  box.textContent = "Διαγράφηκαν όλα τα τοπικά αποτελέσματα.";
-});
-
-const usedBotRadios = document.querySelectorAll('input[name="usedBot"]');
-const optionalBox = document.getElementById('optional-demographics');
-
-usedBotRadios.forEach(radio => {
-  radio.addEventListener('change', () => {
-    if (radio.value === 'yes') {
-      optionalBox.classList.remove('hidden');
-    } else {
-      optionalBox.classList.add('hidden');
+        if (result.status === 'success') {
+            alert("✅ Το ερωτηματολόγιο στάλθηκε και αποθηκεύτηκε στη βάση δεδομένων!");
+            e.target.reset();
+            // Κρύβουμε τα τμήματα της φόρμας όπως πριν
+            scenariosSection.classList.add('hidden');
+            mainQuestions.classList.add('hidden');
+            optionalBox.classList.add('hidden');
+        } else {
+            alert("❌ Σφάλμα κατά την αποθήκευση: " + result.message);
+        }
+    } catch (error) {
+        console.error("Fetch Error:", error);
+        alert("❌ Αδυναμία σύνδεσης με το Railway. Ελέγξτε αν το Backend τρέχει.");
     }
-  });
 });
-function hideOptionalDemographics() {
-  const optionalBox = document.getElementById('optional-demographics');
-  if (optionalBox) {
-    optionalBox.style.display = 'none';
-  }
-}
+
+// Κρύβουμε τα παλιά κουμπιά που δεν χρειάζονται πλέον
+if(viewBtn) viewBtn.style.display = "none";
+if(clearBtn) clearBtn.style.display = "none";
+  
   </script>
 </div>
 
