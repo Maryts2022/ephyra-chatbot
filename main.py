@@ -183,11 +183,9 @@ def init_survey_db():
     conn = get_db_conn() 
     cur = conn.cursor()
     try:
-        # ⬇️ Αυτή η γραμμή σβήνει τον προβληματικό πίνακα για να φτιαχτεί ο σωστός
-        cur.execute("DROP TABLE IF EXISTS survey_results CASCADE;")
         
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS survey_results (
+            CREATE TABLE IF NOT EXISTS survey_final (
                 id SERIAL PRIMARY KEY,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 used_bot TEXT,
@@ -1304,7 +1302,7 @@ async def submit_survey(data: SurveyResponse):
     try:
         # Χρησιμοποιούμε το όνομα survey_results που έχεις στο Railway
         query = """
-            INSERT INTO survey_results 
+            INSERT INTO survey_final 
             (used_bot, usage_context, scenarios_tested, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, comments)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
@@ -1327,12 +1325,12 @@ async def submit_survey(data: SurveyResponse):
 
 # 3. Το "μονοπάτι" για να βλέπουμε τα αποτελέσματα στο Dashboard
 @app.get("/survey_results")
-async def get_survey_results():
+async def get_survey_final():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         # Παίρνουμε τα δεδομένα από τον σωστό πίνακα survey_results
-        cur.execute("SELECT * FROM survey_results ORDER BY timestamp DESC")
+        cur.execute("SELECT * FROM survey_final ORDER BY timestamp DESC")
         rows = cur.fetchall()
         
         results = []
