@@ -503,201 +503,124 @@ button.secondary{
   </form>
 
   <script>
-  const API_URL = ""; 
+const API_URL = ""; 
 
-  // Μεταβλητές για τα γραφήματα (για να μπορούμε να τα ανανεώνουμε)
-  let feedbackChartInstance = null;
-  let languageChartInstance = null;
-
-  // --- 1. ΦΟΡΤΩΣΗ STATS, KPIs, CHART & CHAT TABLE ---
-  async function loadDashboardStats() {
-    try {
-      // Ζητάμε τα πλήρη στατιστικά
-      const res = await fetch(`${API_URL}/feedback/stats?detailed=true`);
-      const data = await res.json();
-      
-      // A. ΕΝΗΜΕΡΩΣΗ KPIs (Τα κουτάκια πάνω)
-      document.getElementById('totalFeedback').innerText = data.total_feedback || 0;
-      document.getElementById('positiveFeedback').innerText = data.positive || 0;
-      document.getElementById('negativeFeedback').innerText = data.negative || 0;
-      document.getElementById('satisfactionRate').innerText = (data.satisfaction_rate || 0) + '%';
-      
-      // Υπολογισμός ποσοστών για τα μικρά γραμματακια
-      const total = data.total_feedback || 1;
-      const posPercent = Math.round((data.positive / total) * 100);
-      const negPercent = Math.round((data.negative / total) * 100);
-      
-      document.getElementById('positivePercent').innerText = posPercent + '% του συνόλου';
-      document.getElementById('negativePercent').innerText = negPercent + '% του συνόλου';
-      document.getElementById('uniqueUsers').innerText = data.unique_users || 0;
-      
-      // B. ΕΝΗΜΕΡΩΣΗ ΠΙΝΑΚΑ CHAT (Πάνω πίνακας)
-      const chatBody = document.getElementById('chatTableBody'); 
-      const chats = data.recent_feedback || [];
-
-      if (chats.length === 0) {
-        chatBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα chat.</td></tr>';
-      } else {
-        chatBody.innerHTML = chats.map(item => `
-          <tr>
-            <td><span style="color:#8aa4c0;">#${item.id}</span></td>
-            <td style="font-size:12px;">${item.timestamp ? item.timestamp.replace('T', ' ').substring(0,16) : '-'}</td>
-            <td style="color:#fff; font-weight:500;">${item.user_question || '-'}</td>
-            <td style="color:#b5c5d9; font-size:13px;">${item.bot_response ? item.bot_response.substring(0, 50) + '...' : '-'}</td>
-            <td style="text-align:center;">
-              ${item.is_positive 
-                ? '<span class="sentiment-badge sentiment-positive">👍 Θετικό</span>' 
-                : '<span class="sentiment-badge sentiment-negative">👎 Αρνητικό</span>'}
-            </td>
-          </tr>
-        `).join('');
-      }
-
-      // C. ΔΗΜΙΟΥΡΓΙΑ ΓΡΑΦΗΜΑΤΩΝ (Charts)
-      renderCharts(data);
-
-      // D. INSIGHTS (Top Questions)
-      const issuesList = document.getElementById('topQuestionsList');
-      if(data.top_questions && data.top_questions.length > 0){
-          issuesList.innerHTML = data.top_questions.map(q => 
-              `<li>${q.question} <strong style="margin-left:auto">${q.count}</strong></li>`
-          ).join('');
-      } else {
-          issuesList.innerHTML = '<li>Δεν υπάρχουν αρκετά δεδομένα</li>';
-      }
-
-    } catch (e) {
-      console.error("Dashboard Stats Error:", e);
-    }
-  }
-
-  // --- 2. ΣΥΝΑΡΤΗΣΗ ΓΙΑ ΤΑ ΓΡΑΦΗΜΑΤΑ (Chart.js) ---
-  function renderCharts(data) {
-    // 1. Γράφημα Τάσης (Trend)
-    const ctxTrend = document.getElementById('feedbackChart').getContext('2d');
-    
-    // Αν υπάρχει ήδη το γράφημα, το διαλύουμε για να το ξαναφτιάξουμε (refresh)
-    if (feedbackChartInstance) feedbackChartInstance.destroy();
-
-    const dates = data.daily_data ? data.daily_data.map(d => d.date) : [];
-    // Απλοποιημένη λογική για το παράδειγμα (θα μπορούσε να είναι πιο σύνθετη)
-    const counts = data.daily_data ? data.daily_data.map(d => d.count) : [];
-
-    feedbackChartInstance = new Chart(ctxTrend, {
-      type: 'line',
-      data: {
-        labels: dates, // Ημερομηνίες
-        datasets: [{
-          label: 'Feedback',
-          data: counts,
-          borderColor: '#1e90ff',
-          backgroundColor: 'rgba(30, 144, 255, 0.1)',
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } }
-      }
+    // --- 1. ΛΕΙΤΟΥΡΓΙΑ CHECKBOXES (Επιτρέπει μόνο 1 επιλογή ανά ερώτηση) ---
+    document.querySelectorAll('section.question').forEach(section => {
+      const checkboxes = section.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) {
+            checkboxes.forEach(other => {
+              if (other !== cb) other.checked = false;
+            });
+          }
+        });
+      });
     });
 
-    // 2. Γράφημα Γλώσσας (Language)
-    const ctxLang = document.getElementById('languageChart').getContext('2d');
-    if (languageChartInstance) languageChartInstance.destroy();
+    // --- 2. HELPERS (Βοηθητικές συναρτήσεις) ---
+    function getCheckedValue(name){
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      return checked ? checked.value : null;
+    }
+    function clearGroup(name){
+      document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = false);
+    }
 
-    const elCount = data.language_distribution?.el || 0;
-    const enCount = data.language_distribution?.en || 0;
+    // --- 3. ΕΜΦΑΝΙΣΗ/ΑΠΟΚΡΥΨΗ ΕΝΟΤΗΤΩΝ (Αν πατήσει "Ναι" στο Bot) ---
+    const scenariosSection = document.getElementById('scenariosSection');
+    const mainQuestions = document.getElementById('mainQuestions');
+    const optionalBox = document.getElementById('optionalBox'); // Αν υπάρχει
 
-    languageChartInstance = new Chart(ctxLang, {
-      type: 'doughnut',
-      data: {
-        labels: ['Ελληνικά', 'English'],
-        datasets: [{
-          data: [elCount, enCount],
-          backgroundColor: ['#1e90ff', '#20c997'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } }
-      }
+    document.querySelectorAll('input[name="usedBot"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const val = getCheckedValue('usedBot');
+
+        if (val === 'yes') {
+          if(scenariosSection) scenariosSection.classList.remove('hidden');
+          if(mainQuestions) mainQuestions.classList.remove('hidden');
+          if(optionalBox) optionalBox.classList.remove('hidden');
+        } else {
+          // Όχι ή τίποτα -> Κρύψιμο και καθαρισμός
+          if(scenariosSection) scenariosSection.classList.add('hidden');
+          if(mainQuestions) mainQuestions.classList.add('hidden');
+          if(optionalBox) optionalBox.classList.add('hidden');
+
+          clearGroup('timesUsed');
+          for (let i = 1; i <= 15; i++) clearGroup('q' + i);
+        }
+      });
     });
-  }
 
-  // --- 3. ΦΟΡΤΩΣΗ SURVEY RESULTS (Κάτω πίνακας) ---
-  async function loadSurveyResults() {
-    try {
-      const res = await fetch(`${API_URL}/survey_results`);
-      const data = await res.json();
-      
-      const tbody = document.getElementById('surveyTableBody'); 
+    // --- 4. ΥΠΟΒΟΛΗ ΦΟΡΜΑΣ (Το νέο κομμάτι με το Loading & Friendly Error) ---
+    // Προσοχή: Εδώ χρησιμοποιούμε το ID "questionnaire" όπως το έχεις εσύ
+    const form = document.getElementById('questionnaire');
 
-      if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="18" style="text-align:center; padding:20px;">Δεν υπάρχουν απαντήσεις ερωτηματολογίου.</td></tr>';
-        return;
-      }
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Σταματάμε το refresh
 
-      tbody.innerHTML = data.map(item => `
-        <tr>
-          <td>#${item.id}</td>
-          <td style="font-size:12px">${item.timestamp}</td>
-          <td class="q-cell">${item.q1 || '-'}</td>
-          <td class="q-cell">${item.q2 || '-'}</td>
-          <td class="q-cell">${item.q3 || '-'}</td>
-          <td class="q-cell">${item.q4 || '-'}</td>
-          <td class="q-cell">${item.q5 || '-'}</td>
-          <td class="q-cell">${item.q6 || '-'}</td>
-          <td style="font-size:12px; max-width:200px;">${item.comments || '-'}</td>
-        </tr>
-      `).join('');
+            // Συλλογή Δεδομένων
+            const surveyData = {
+                usedBot: getCheckedValue('usedBot') || "no",
+                usageContext: document.getElementById('usageContext')?.value || "N/A",
+                scenarios: getCheckedValue('timesUsed') || "None", // Προσοχή στο name
+                comments: document.getElementById('comments')?.value || ""
+            };
 
-    } catch (e) {
-      console.error("Survey Error:", e);
+            // Συλλογή q1-q15
+            for (let i = 1; i <= 15; i++) {
+                let val = getCheckedValue(`q${i}`);
+                surveyData[`q${i}`] = val ? parseInt(val) : 0;
+            }
+
+            // Εφέ στο κουμπί
+            const submitBtn = document.querySelector('.submit-btn') || document.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn ? submitBtn.innerText : "Υποβολή";
+            
+            if(submitBtn) {
+                submitBtn.innerText = "⏳ Αποστολή...";
+                submitBtn.disabled = true;
+            }
+
+            try {
+                // Αποστολή στο Railway
+                const response = await fetch(`${API_URL}/submit_survey`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(surveyData)
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    alert("✅ Ευχαριστούμε! Η γνώμη σας καταγράφηκε επιτυχώς.");
+                    e.target.reset();
+                    window.scrollTo(0, 0);
+                    
+                    // Κρύβουμε ξανά τα τμήματα
+                    if(scenariosSection) scenariosSection.classList.add('hidden');
+                    if(mainQuestions) mainQuestions.classList.add('hidden');
+                    if(optionalBox) optionalBox.classList.add('hidden');
+
+                } else {
+                    throw new Error(result.message || "Server Error");
+                }
+            } catch (error) {
+                console.error("Submission Error:", error);
+                // Το φιλικό μήνυμα που ήθελες
+                alert("⚠️ Υπήρξε μια μικρή καθυστέρηση στη σύνδεση. Παρακαλώ δοκιμάστε να πατήσετε 'Υποβολή' ξανά.");
+            } finally {
+                // Επαναφορά κουμπιού
+                if(submitBtn) {
+                    submitBtn.innerText = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+            }
+        });
     }
-  }
-
-  // --- 4. ΛΕΙΤΟΥΡΓΙΕΣ ΚΟΥΜΠΙΩΝ ---
-  
-  // Ανανέωση
-  function refreshData() {
-    loadDashboardStats();
-    loadSurveyResults();
-  }
-
-  // Export CSV (Κατεβάζει το αρχείο)
-  function exportData() {
-    window.location.href = `${API_URL}/feedback/export?format=csv`;
-  }
-
-  // Καθαρισμός (Διαγραφή) Chat Feedback
-  async function clearAllFeedback() {
-    if(!confirm("ΠΡΟΣΟΧΗ: Είστε σίγουρη ότι θέλετε να διαγράψετε ΟΛΑ τα Chat Feedback; Η ενέργεια δεν αναιρείται.")) return;
-    
-    try {
-      const res = await fetch(`${API_URL}/feedback/clear`, { method: 'POST' });
-      const result = await res.json();
-      
-      if(result.status === 'success') {
-        alert("✅ Επιτυχής διαγραφή δεδομένων.");
-        refreshData(); // Ανανεώνουμε για να φανούν άδεια
-      } else {
-        alert("❌ Σφάλμα: " + result.message);
-      }
-    } catch (e) {
-      alert("❌ Σφάλμα σύνδεσης.");
-    }
-  }
-
-  // --- ΕΚΚΙΝΗΣΗ ---
-  refreshData(); // Φορτώνει τα πάντα με το που ανοίγει η σελίδα
-  
-  // Auto-refresh κάθε 30 δευτερόλεπτα
-  setInterval(refreshData, 30000);
-
-</script>
+  </script>
 </div>
 
 <footer class="questionnaire-footer">
