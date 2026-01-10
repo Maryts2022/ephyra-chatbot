@@ -403,6 +403,14 @@
     .btn-refresh:hover { background: #0c67c2; transform: translateY(-2px); }
 
     .q-cell { text-align: center; font-weight: 600; color: #1e90ff; }
+
+    /* --- PAGINATION CONTROLS (ΝΕΟ) --- */
+    .pagination { display: flex; justify-content: flex-end; align-items: center; padding: 15px; gap: 15px; background: rgba(0,0,0,0.2); }
+    .page-info { font-size: 14px; color: #94a3b8; }
+    .page-btn { padding: 6px 12px; background: #334155; border: none; color: white; border-radius: 6px; cursor: pointer; }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .page-btn:hover:not(:disabled) { background: #475569; }
+
   </style>
 </head>
 <body>
@@ -522,6 +530,13 @@
       </tbody>
     </table>
   </div>
+  <div class="pagination">
+        <span class="page-info" id="surveyPageInfo">Σελίδα 1</span>
+        <div>
+            <button class="page-btn" onclick="prevSurveyPage()">⬅️ Προηγ.</button>
+            <button class="page-btn" onclick="nextSurveyPage()">Επόμενο ➡️</button>
+        </div>
+    </div>
 </div>
 
 <div class="divide-line">
@@ -543,6 +558,15 @@
             <th title="Ερώτηση 4">Q4</th>
             <th title="Ερώτηση 5">Q5</th>
             <th title="Ερώτηση 6">Q6</th>
+            <th title="Ερώτηση 1">Q7</th>
+            <th title="Ερώτηση 2">Q8</th>
+            <th title="Ερώτηση 3">Q9</th>
+            <th title="Ερώτηση 4">Q10</th>
+            <th title="Ερώτηση 5">Q11</th>
+            <th title="Ερώτηση 6">Q12</th>
+            <th title="Ερώτηση 4">Q13</th>
+            <th title="Ερώτηση 5">Q14</th>
+            <th title="Ερώτηση 6">Q15</th>
             <th>Σχόλια</th>
           </tr>
         </thead>
@@ -551,11 +575,30 @@
         </tbody>
       </table>
     </div>
+    <div class="pagination">
+        <span class="page-info" id="surveyPageInfo">Σελίδα 1</span>
+        <div>
+            <button class="page-btn" onclick="prevSurveyPage()">⬅️ Προηγ.</button>
+            <button class="page-btn" onclick="nextSurveyPage()">Επόμενο ➡️</button>
+        </div>
+    </div>
   </div>
 </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
  <script>
     const API_URL = ""; 
+
+    // --- PAGINATION VARIABLES ---
+  const ROWS_PER_PAGE = 10;
+  
+  let allChatData = [];
+  let currentChatPage = 1;
+
+  let allSurveyData = [];
+  let currentSurveyPage = 1;
+
+  let feedbackChartInstance = null;
+  let languageChartInstance = null;
 
   // --- 1. ΓΕΜΙΖΕΙ ΤΟΝ ΠΑΝΩ ΠΙΝΑΚΑ (CHAT & THUMBS) ---
   async function loadChatData() {
