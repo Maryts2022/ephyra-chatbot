@@ -179,12 +179,13 @@ def return_db_conn(conn):
 # --- AYTOMATH ΔΗΜΙΟΥΡΓΙΑ ΠΙΝΑΚΑ SURVEY ---
 def init_survey_db():
     """Δημιουργεί αυτόματα τον πίνακα survey_results αν δεν υπάρχει με όλες τις στήλες."""
-    conn = get_db_conn()
+    # ✅ Χρησιμοποιούμε get_db_conn() που είναι ήδη ορισμένο παραπάνω
+    conn = get_db_conn() 
     cur = conn.cursor()
     try:
-        # ⬇️ ΠΡΟΣΘΕΣΕ ΑΥΤΗ ΤΗ ΓΡΑΜΜΗ ΕΔΩ ΓΙΑ ΜΙΑ ΦΟΡΑ ⬇️
+        # ⬇️ Αυτή η γραμμή σβήνει τον προβληματικό πίνακα για να φτιαχτεί ο σωστός
         cur.execute("DROP TABLE IF EXISTS survey_results CASCADE;")
-
+        
         cur.execute("""
             CREATE TABLE IF NOT EXISTS survey_results (
                 id SERIAL PRIMARY KEY,
@@ -199,7 +200,7 @@ def init_survey_db():
             );
         """)
         conn.commit()
-        log.info("✅ Database table 'survey_results' is ready with all 15 questions!")
+        log.info("✅ Database table 'survey_results' was RECREATED successfully!")
     except Exception as e:
         log.error(f"❌ Error initializing survey table: {e}")
     finally:
