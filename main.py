@@ -183,7 +183,10 @@ def init_survey_db():
     conn = get_db_conn() 
     cur = conn.cursor()
     try:
-        
+        # 1. ΕΞΑΦΑΝΙΖΟΥΜΕ ΤΟΝ ΠΑΛΙΟ ΠΙΝΑΚΑ ΠΟΥ ΜΠΕΡΔΕΥΕΙ ΤΟ RAILWAY
+        cur.execute("DROP TABLE IF EXISTS survey_results CASCADE;")
+
+        # 2. ΦΤΙΑΧΝΟΥΜΕ ΤΟΝ ΚΑΙΝΟΥΡΓΙΟ ΠΙΝΑΚΑ
         cur.execute("""
             CREATE TABLE IF NOT EXISTS survey_final (
                 id SERIAL PRIMARY KEY,
@@ -198,7 +201,7 @@ def init_survey_db():
             );
         """)
         conn.commit()
-        log.info("✅ Database table 'survey_results' was RECREATED successfully!")
+        log.info("🚀 ΠΙΝΑΚΑΣ survey_final ΔΗΜΙΟΥΡΓΗΘΗΚΕ ΚΑΙ survey_results ΔΙΑΓΡΑΦΗΚΕ!")
     except Exception as e:
         log.error(f"❌ Error initializing survey table: {e}")
     finally:
@@ -206,6 +209,33 @@ def init_survey_db():
         return_db_conn(conn)
 
 init_survey_db()
+
+@app.post("/submit_survey")
+async def submit_survey(data: SurveyResponse):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        query = """
+            INSERT INTO survey_final 
+            (used_bot, usage_context, scenarios_tested, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, comments)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        cur.execute(query, (
+            data.usedBot, data.usageContext, data.scenarios,
+            data.q1, data.q2, data.q3, data.q4, data.q5,
+            data.q6, data.q7, data.q8, data.q9, data.q10,
+            data.q11, data.q12, data.q13, data.q14, data.q15,
+            data.comments
+        ))
+        conn.commit()
+        return {"status": "success", "message": "Survey saved successfully!"}
+    except Exception as e:
+        if conn: conn.rollback()
+        log.error(f"Survey error: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        cur.close()
+        return_db_conn(conn)
 
  
 # 3. Τα Aliases (για να μη χτυπάει πουθενά ο κώδικας)
