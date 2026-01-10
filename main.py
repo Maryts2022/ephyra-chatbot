@@ -1360,11 +1360,15 @@ async def submit_survey(data: SurveyResponse):
 # 3. Το "μονοπάτι" για να βλέπουμε τα αποτελέσματα στο Dashboard
 @app.get("/survey_results")
 async def get_survey_final():
-    conn = get_db_conn()
+    conn = get_db_conn() # ✅ Χρησιμοποιούμε το σωστό όνομα συνάρτησης
     cur = conn.cursor()
     try:
-        # Παίρνουμε τα δεδομένα από τον σωστό πίνακα survey_results
-        cur.execute("SELECT * FROM survey_final ORDER BY timestamp DESC")
+        # Επιλέγουμε id, timestamp, q1-q15 και comments (Σύνολο 18 στήλες)
+        cur.execute("""
+            SELECT id, timestamp, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, comments 
+            FROM survey_final 
+            ORDER BY timestamp DESC
+        """)
         rows = cur.fetchall()
         
         results = []
@@ -1372,16 +1376,15 @@ async def get_survey_final():
             results.append({
                 "id": r[0],
                 "timestamp": r[1].strftime("%Y-%m-%d %H:%M:%S") if r[1] else "",
-                "usedBot": r[2], "usageContext": r[3], "scenarios": r[4],
-                "q1": r[5], "q2": r[6], "q3": r[7], "q4": r[8], "q5": r[9],
-                "q6": r[10], "q7": r[11], "q8": r[12], "q9": r[13], "q10": r[14],
-                "q11": r[15], "q12": r[16], "q13": r[17], "q14": r[18], "q15": r[19],
-                "comments": r[20]
+                "q1": r[2], "q2": r[3], "q3": r[4], "q4": r[5], "q5": r[6],
+                "q6": r[7], "q7": r[8], "q8": r[9], "q9": r[10], "q10": r[11],
+                "q11": r[12], "q12": r[13], "q13": r[14], "q14": r[15], "q15": r[16],
+                "comments": r[17]
             })
         return results
     except Exception as e:
-        log.error(f"Error fetching results: {e}")
-        return {"status": "error", "message": str(e)}
+        log.error(f"Error: {e}")
+        return []
     finally:
         cur.close()
         return_db_conn(conn)

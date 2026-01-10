@@ -523,16 +523,15 @@
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Sentiment</th>
-              <th>Ερώτηση</th>
-              <th>Απάντηση Bot</th>
-              <th>Χρόνος (s)</th>
-              <th>Γλώσσα</th>
-              <th>Ημερομηνία</th>
-            </tr>
+    <th>ID</th>
+    <th>Timestamp</th>
+    <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th>
+    <th>Q6</th><th>Q7</th><th>Q8</th><th>Q9</th><th>Q10</th>
+    <th>Q11</th><th>Q12</th><th>Q13</th><th>Q14</th><th>Q15</th>
+    <th>Σχόλια</th>
+  </tr>
           </thead>
-          <tbody id="feedbackTableBody">
+          <tbody id="surveyTableBody">
             <tr>
               <td colspan="7" class="loading">Φόρτωση δεδομένων...</td>
             </tr>
@@ -573,7 +572,7 @@
 </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
  <script>
-    const API_URL = window.location.origin;
+    const API_URL = "";
     let allFeedbackData = [];
 
     // 1. Φόρτωση Δεδομένων από το νέο endpoint /survey_results
@@ -654,8 +653,6 @@
     // Ανανέωση δεδομένων αυτόματα κάθε 20 δευτερόλεπτα
     setInterval(refreshData, 20000);
 
-    const API_URL = window.location.origin;
-
     // Συνάρτηση για να καθαρίζει το κείμενο από περίεργους χαρακτήρες (ασφάλεια)
     function escapeHtml(text) {
       if (!text) return '-';
@@ -678,21 +675,27 @@
           return;
         }
 
-        // Δημιουργία των γραμμών του πίνακα
         tbody.innerHTML = data.map(item => `
           <tr>
-            <td style="font-weight: bold; color: #fff;">#${item.id}</td>
-            <td style="color: #8aa4c0; font-size: 12px;">${item.timestamp}</td>
-            <td class="q-cell">${item.q1 || '-'}</td>
+             <td>#${item.id}</td>
+            <td>${item.timestamp}</td>
+              <td class="q-cell">${item.q1 || '-'}</td>
             <td class="q-cell">${item.q2 || '-'}</td>
             <td class="q-cell">${item.q3 || '-'}</td>
             <td class="q-cell">${item.q4 || '-'}</td>
             <td class="q-cell">${item.q5 || '-'}</td>
-            <td class="q-cell">${item.q6 || '-'}</td>
-            <td style="color: #b5c5d9; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.comments || ''}">
-              ${escapeHtml(item.comments)}
-            </td>
-          </tr>
+           <td class="q-cell">${item.q6 || '-'}</td>
+            <td class="q-cell">${item.q7 || '-'}</td>
+           <td class="q-cell">${item.q8 || '-'}</td>
+           <td class="q-cell">${item.q9 || '-'}</td>
+           <td class="q-cell">${item.q10 || '-'}</td>
+           <td class="q-cell">${item.q11 || '-'}</td>
+           <td class="q-cell">${item.q12 || '-'}</td>
+            <td class="q-cell">${item.q13 || '-'}</td>
+           <td class="q-cell">${item.q14 || '-'}</td>
+           <td class="q-cell">${item.q15 || '-'}</td>
+          <td>${item.comments || '-'}</td>
+  </tr>
         `).join('');
 
       } catch (error) {
@@ -701,7 +704,7 @@
           `<tr><td colspan="9" style="text-align:center; color: #ff6b6b; padding: 20px;">Σφάλμα σύνδεσης: ${error.message}</td></tr>`;
       }
     }
-
+    
     // Αρχική εκτέλεση μόλις ανοίξει η σελίδα
     loadSurveyResults();
 
