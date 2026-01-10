@@ -176,6 +176,30 @@ def return_db_conn(conn):
             conn_pool.putconn(conn)
         except Exception as e:
             log.error(f"❌ Error returning connection to pool: {e}")
+
+# 1. Ορισμός των πεδίων που περιμένουμε από το ερωτηματολόγιο
+class SurveyResponse(BaseModel):
+    usedBot: str
+    usageContext: str
+    scenarios: str
+    q1: int
+    q2: int
+    q3: int
+    q4: int
+    q5: int
+    q6: int
+    q7: int
+    q8: int
+    q9: int
+    q10: int
+    q11: int
+    q12: int
+    q13: int
+    q14: int
+    q15: int
+    comments: Optional[str] = ""
+
+
 # --- AYTOMATH ΔΗΜΙΟΥΡΓΙΑ ΠΙΝΑΚΑ SURVEY ---
 def init_survey_db():
     """Δημιουργεί αυτόματα τον πίνακα survey_results αν δεν υπάρχει με όλες τις στήλες."""
@@ -1302,27 +1326,7 @@ from pydantic import BaseModel
 
 # --- SURVEY SYSTEM (START) ---
 
-# 1. Ορισμός των πεδίων που περιμένουμε από το ερωτηματολόγιο
-class SurveyResponse(BaseModel):
-    usedBot: str
-    usageContext: str
-    scenarios: str
-    q1: int
-    q2: int
-    q3: int
-    q4: int
-    q5: int
-    q6: int
-    q7: int
-    q8: int
-    q9: int
-    q10: int
-    q11: int
-    q12: int
-    q13: int
-    q14: int
-    q15: int
-    comments: Optional[str] = ""
+
 
 # 2. Το "μονοπάτι" για την αποθήκευση στη βάση
 @app.post("/submit_survey")
