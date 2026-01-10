@@ -236,7 +236,7 @@ init_survey_db()
 
 @app.post("/submit_survey")
 async def submit_survey(data: SurveyResponse):
-    conn = get_db_connection()
+    conn = get_db_conn()
     cur = conn.cursor()
     try:
         query = """
@@ -998,7 +998,7 @@ def shutdown_event():
 async def get_feedback_stats(days: int = 30, detailed: bool = False):
     """Get feedback statistics with advanced metrics."""
     try:
-        conn = get_db_connection()
+        conn = get_db_conn()
         cursor = conn.cursor()
         
         since_date = datetime.now() - timedelta(days=days)
@@ -1248,7 +1248,7 @@ async def get_feedback_stats(days: int = 30, detailed: bool = False):
 async def export_feedback(days: int = 30, format: str = "csv"):
     """Export feedback data."""
     try:
-        conn = get_db_connection()
+        conn = get_db_conn()
         cursor = conn.cursor()
         
         since_date = datetime.now() - timedelta(days=days)
@@ -1297,7 +1297,7 @@ async def export_feedback(days: int = 30, format: str = "csv"):
 async def clear_all_feedback():
     """Delete all feedback data."""
     try:
-        conn = get_db_connection()
+        conn = get_db_conn()
         cursor = conn.cursor()
         
         # Delete all feedback
@@ -1331,7 +1331,7 @@ from pydantic import BaseModel
 # 2. Το "μονοπάτι" για την αποθήκευση στη βάση
 @app.post("/submit_survey")
 async def submit_survey(data: SurveyResponse):
-    conn = get_db_connection()
+    conn = get_db_conn()
     cur = conn.cursor()
     try:
         # Χρησιμοποιούμε το όνομα survey_results που έχεις στο Railway
@@ -1360,7 +1360,7 @@ async def submit_survey(data: SurveyResponse):
 # 3. Το "μονοπάτι" για να βλέπουμε τα αποτελέσματα στο Dashboard
 @app.get("/survey_results")
 async def get_survey_final():
-    conn = get_db_connection()
+    conn = get_db_conn()
     cur = conn.cursor()
     try:
         # Παίρνουμε τα δεδομένα από τον σωστό πίνακα survey_results
