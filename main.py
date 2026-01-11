@@ -232,7 +232,7 @@ async def submit_survey(data: SurveyResponse):
     conn = get_db_conn()
     cur = conn.cursor()
     try:
-        # ΔΙΟΡΘΩΣΗ: Προσθέσαμε 21 %s για να ταιριάζουν με τις 21 στήλες
+        # 1. Πλήρες Query με όλες τις 22 στήλες (μαζί με gender, age, q16)
         query = """
             INSERT INTO survey_final 
             (used_bot, usage_context, scenarios_tested, gender, age, 
@@ -240,18 +240,22 @@ async def submit_survey(data: SurveyResponse):
              q11, q12, q13, q14, q15, q16, comments)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
+        
+        # 2. Η σειρά των δεδομένων πρέπει να είναι ΑΚΡΙΒΩΣ ίδια με τις στήλες παραπάνω
         cur.execute(query, (
-            data.usedBot, data.usageContext, data.scenarios, data.gender, data.age,
+            data.usedBot, data.usageContext, data.scenarios, 
+            data.gender, data.age,  # Αυτά έμπαιναν σε λάθος θέση
             data.q1, data.q2, data.q3, data.q4, data.q5,
             data.q6, data.q7, data.q8, data.q9, data.q10,
-            data.q11, data.q12, data.q13, data.q14, data.q15, data.q16,
+            data.q11, data.q12, data.q13, data.q14, data.q15,
+            data.q16,               # Η 16η ερώτηση
             data.comments
         ))
         conn.commit()
         return {"status": "success"}
     except Exception as e:
         if conn: conn.rollback()
-        log.error(f"❌ Survey DB Error: {e}") # Αυτό θα σου δείξει το ακριβές λάθος στα Logs
+        log.error(f"❌ Database Insertion Error: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         cur.close()
