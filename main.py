@@ -197,18 +197,19 @@ class SurveyResponse(BaseModel):
 
 # --- AYTOMATH ΔΗΜΙΟΥΡΓΙΑ ΠΙΝΑΚΑ SURVEY ---
 def init_survey_db():
-    conn = get_db_conn()
+    conn = get_db_conn() 
     cur = conn.cursor()
     try:
-        # ΠΡΟΣΟΧΗ: Το DROP TABLE θα σβήσει τις παλιές απαντήσεις για να φτιαχτεί ο νέος πίνακας σωστά
+        # Διαγράφουμε τον πίνακα για να εφαρμοστούν οι νέες στήλες σωστά
         cur.execute("DROP TABLE IF EXISTS survey_final CASCADE;") 
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS survey_final (
                 id SERIAL PRIMARY KEY,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 used_bot TEXT,
                 usage_context TEXT,
-                scenarios_tested TEXT,
+                scenarios_tested TEXT, -- Η στήλη για τα σενάρια
                 gender TEXT,
                 age TEXT,
                 q1 INTEGER, q2 INTEGER, q3 INTEGER, q4 INTEGER, q5 INTEGER,
@@ -220,7 +221,7 @@ def init_survey_db():
         """)
         conn.commit()
     except Exception as e:
-        print(f"Error init survey db: {e}")
+        log.error(f"❌ Error initializing survey table: {e}")
     finally:
         cur.close()
         return_db_conn(conn)
@@ -232,7 +233,7 @@ async def submit_survey(data: SurveyResponse):
     conn = get_db_conn()
     cur = conn.cursor()
     try:
-        # 1. Το Query με τη σωστή σειρά στηλών (22 στήλες)
+        # 22 στήλες συνολικά
         query = """
             INSERT INTO survey_final 
             (used_bot, usage_context, scenarios_tested, gender, age, 
@@ -241,11 +242,10 @@ async def submit_survey(data: SurveyResponse):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
-        # 2. Η σειρά των δεδομένων πρέπει να είναι ΑΚΡΙΒΩΣ ίδια με τις στήλες παραπάνω
         cur.execute(query, (
             data.usedBot,           # used_bot
             data.usageContext,      # usage_context
-            data.scenarios,         # scenarios_tested
+            data.scenarios,         # scenarios_tested (ΕΔΩ ΜΠΑΙΝΟΥΝ ΤΑ ΣΕΝΑΡΙΑ)
             data.gender,            # gender
             data.age,               # age
             data.q1, data.q2, data.q3, data.q4, data.q5,
@@ -258,7 +258,7 @@ async def submit_survey(data: SurveyResponse):
         return {"status": "success"}
     except Exception as e:
         if conn: conn.rollback()
-        logging.error(f"❌ Database Insertion Error: {e}")
+        log.error(f"❌ Database Insertion Error: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         cur.close()
@@ -1285,9 +1285,10 @@ async def get_survey_final():
         conn = get_db_conn()
         cur = conn.cursor()
         
-        # Προσθέτουμε gender, age και q16 στην αναζήτηση
         cur.execute("""
-            SELECT id, timestamp, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, gender, age, q16 
+            SELECT id, timestamp, scenarios_tested, gender, age, 
+                   q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, 
+                   q11, q12, q13, q14, q15, q16 
             FROM survey_final 
             ORDER BY timestamp DESC
         """)
@@ -1298,17 +1299,18 @@ async def get_survey_final():
             results.append({
                 "id": r[0],
                 "timestamp": r[1].strftime("%Y-%m-%d %H:%M:%S") if r[1] else "",
-                "q1": r[2], "q2": r[3], "q3": r[4], "q4": r[5], "q5": r[6],
-                "q6": r[7], "q7": r[8], "q8": r[9], "q9": r[10], "q10": r[11],
-                "q11": r[12], "q12": r[13], "q13": r[14], "q14": r[15],
-                "gender": r[16],  # ΝΕΟ
-                "age": r[17],     # ΝΕΟ
-                "q16": r[18]      # ΝΕΟ
+                "scenarios": r[2], # ΝΕΟ
+                "gender": r[3],
+                "age": r[4],
+                "q1": r[5], "q2": r[6], "q3": r[7], "q4": r[8], "q5": r[9],
+                "q6": r[10], "q7": r[11], "q8": r[12], "q9": r[13], "q10": r[14],
+                "q11": r[15], "q12": r[16], "q13": r[17], "q14": r[18], "q15": r[19],
+                "q16": r[20]
             })
         cur.close()
         return results
     except Exception as e:
-        logging.error(f"Error getting survey results: {e}")
+        log.error(f"Error getting survey results: {e}")
         return []
     finally:
         if conn: return_db_conn(conn)

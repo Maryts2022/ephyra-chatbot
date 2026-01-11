@@ -207,6 +207,7 @@
           <tr>
             <th>ID</th>
             <th>Date</th>
+            <th>Σενάρια</th>
             <th>Φύλο</th>
             <th>Ηλικία</th>
 
@@ -348,23 +349,26 @@
   // --- 4. RENDER SURVEY TABLE (με σελίδες) ---
   // --- 4. RENDER SURVEY TABLE (ΔΙΟΡΘΩΜΕΝΟ ΜΕ ΦΥΛΟ/ΗΛΙΚΙΑ/Q16) ---
   function renderSurveyTable() {
-      const tbody = document.getElementById('surveyTableBody');
-      const start = (currentSurveyPage - 1) * ROWS_PER_PAGE;
-      const end = start + ROWS_PER_PAGE;
-      const pageData = allSurveyData.slice(start, end);
-      const totalPages = Math.ceil(allSurveyData.length / ROWS_PER_PAGE) || 1;
+    const tbody = document.getElementById('surveyTableBody');
+    const start = (currentSurveyPage - 1) * ROWS_PER_PAGE;
+    const end = start + ROWS_PER_PAGE;
+    const pageData = allSurveyData.slice(start, end);
+    const totalPages = Math.ceil(allSurveyData.length / ROWS_PER_PAGE) || 1;
 
-      document.getElementById('surveyPageInfo').innerText = `Σελίδα ${currentSurveyPage} από ${totalPages} (Σύνολο: ${allSurveyData.length})`;
+    document.getElementById('surveyPageInfo').innerText = `Σελίδα ${currentSurveyPage} από ${totalPages} (Σύνολο: ${allSurveyData.length})`;
 
-      if(pageData.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="21" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
-          return;
-      }
+    if(pageData.length === 0) {
+        // Αυξάνουμε το colspan σε 22 γιατί προσθέσαμε νέα στήλη
+        tbody.innerHTML = '<tr><td colspan="22" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
+        return;
+    }
 
-      tbody.innerHTML = pageData.map(item => `
+    tbody.innerHTML = pageData.map(item => `
         <tr>
           <td>#${item.id}</td>
           <td style="font-size:11px">${item.timestamp}</td>
+          
+          <td style="font-weight:500; color:#ffd700;">${item.scenarios || '-'}</td>
           
           <td style="font-size:12px">${item.gender || '-'}</td>
           <td style="font-size:12px">${item.age || '-'}</td>
@@ -376,10 +380,12 @@
           <td class="q-cell">${item.q9||'-'}</td><td class="q-cell">${item.q10||'-'}</td>
           <td class="q-cell">${item.q11||'-'}</td><td class="q-cell">${item.q12||'-'}</td>
           <td class="q-cell">${item.q13||'-'}</td><td class="q-cell">${item.q14||'-'}</td>
-          <td class="q-cell">${item.q15||'-'}</td><td class="q-cell">${item.q16||'-'}</td>
+          <td class="q-cell">${item.q15||'-'}</td>
+          
+          <td class="q-cell" style="font-weight:bold; color:#1e90ff;">${item.q16 || '-'}</td>
         </tr>
       `).join('');
-  }
+}
 
   // --- 5. PAGINATION CONTROLS ---
   function prevChatPage() { if(currentChatPage > 1) { currentChatPage--; renderChatTable(); } }
