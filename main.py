@@ -115,6 +115,14 @@ def sync_csv_to_db():
 
         # 3. Καθαρισμός πίνακα για φρέσκο συγχρονισμό
         cur.execute("TRUNCATE public.kb_items_raw;")
+        
+        # Αυτή η εντολή κάνει την αναζήτηση αστραπιαία:
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS kb_items_embedding_idx 
+            ON public.kb_items_raw 
+            USING hnsw (embedding_384 vector_cosine_ops);
+        """)
+
 
         # 4. Ανέβασμα από το CSV
         with open("QA_chatbot.csv", mode="r", encoding="utf-8") as f:
