@@ -182,29 +182,16 @@ def return_db_conn(conn):
         except Exception as e:
             log.error(f"❌ Error returning connection to pool: {e}")
 
-# 1. Ορισμός των πεδίων που περιμένουμε από το ερωτηματολόγιο
 class SurveyResponse(BaseModel):
     usedBot: str
-    usageContext: Optional[str] = "N/A"  # Το βάζω Optional για να μην σκάει αν λείπει
+    usageContext: str
     scenarios: str
-    gender: Optional[str] = None       # ΝΕΟ: Φύλο
-    age: Optional[str] = None          # ΝΕΟ: Ηλικία
-    q1: int
-    q2: int
-    q3: int
-    q4: int
-    q5: int
-    q6: int
-    q7: int
-    q8: int
-    q9: int
-    q10: int
-    q11: int
-    q12: int
-    q13: int
-    q14: int
-    q15: int
-    q16: int                           # ΝΕΟ: Ερώτηση 16
+    gender: Optional[str] = "N/A"  # Προσθήκη
+    age: Optional[str] = "N/A"     # Προσθήκη
+    q1: int; q2: int; q3: int; q4: int; q5: int
+    q6: int; q7: int; q8: int; q9: int; q10: int
+    q11: int; q12: int; q13: int; q14: int; q15: int
+    q16: int                       # Προσθήκη
     comments: Optional[str] = ""
 
 
@@ -213,7 +200,7 @@ def init_survey_db():
     conn = get_db_conn() 
     cur = conn.cursor()
     try:
-        # ΠΡΟΣΟΧΗ: Προσθέτουμε DROP για να σβηστεί ο παλιός πίνακας και να πάρει τις νέες στήλες
+        # Αναγκάζουμε τη βάση να διαγράψει τον παλιό πίνακα για να πάρει τις νέες στήλες
         cur.execute("DROP TABLE IF EXISTS survey_final CASCADE;") 
 
         cur.execute("""
@@ -233,9 +220,8 @@ def init_survey_db():
             );
         """)
         conn.commit()
-        log.info("🚀 ΠΙΝΑΚΑΣ survey_final ΑΝΑΒΑΘΜΙΣΤΗΚΕ ΜΕ ΤΑ ΝΕΑ ΠΕΔΙΑ!")
     except Exception as e:
-        log.error(f"❌ Error initializing survey table: {e}")
+        log.error(f"❌ Error: {e}")
     finally:
         cur.close()
         return_db_conn(conn)
@@ -251,10 +237,8 @@ async def submit_survey(data: SurveyResponse):
             INSERT INTO survey_final 
             (used_bot, usage_context, scenarios_tested, gender, age, 
              q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, 
-             q11, q12, q13, q14, q15, q16)
-            VALUES (%s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, %s)
+             q11, q12, q13, q14, q15, q16, comments)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cur.execute(query, (
             data.usedBot, data.usageContext, data.scenarios, data.gender, data.age,
@@ -264,10 +248,9 @@ async def submit_survey(data: SurveyResponse):
             data.comments
         ))
         conn.commit()
-        return {"status": "success", "message": "Survey saved successfully!"}
+        return {"status": "success"}
     except Exception as e:
         if conn: conn.rollback()
-        log.error(f"Survey error: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         cur.close()
