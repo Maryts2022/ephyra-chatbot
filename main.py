@@ -197,12 +197,11 @@ class SurveyResponse(BaseModel):
 
 # --- AYTOMATH ΔΗΜΙΟΥΡΓΙΑ ΠΙΝΑΚΑ SURVEY ---
 def init_survey_db():
-    conn = get_db_conn() 
+    conn = get_db_conn()
     cur = conn.cursor()
     try:
-        # Αναγκάζουμε τη βάση να διαγράψει τον παλιό πίνακα για να πάρει τις νέες στήλες
+        # ΠΡΟΣΟΧΗ: Το DROP TABLE θα σβήσει τις παλιές απαντήσεις για να φτιαχτεί ο νέος πίνακας σωστά
         cur.execute("DROP TABLE IF EXISTS survey_final CASCADE;") 
-
         cur.execute("""
             CREATE TABLE IF NOT EXISTS survey_final (
                 id SERIAL PRIMARY KEY,
@@ -210,18 +209,18 @@ def init_survey_db():
                 used_bot TEXT,
                 usage_context TEXT,
                 scenarios_tested TEXT,
-                gender TEXT,     -- ΝΕΟ
-                age TEXT,        -- ΝΕΟ
+                gender TEXT,
+                age TEXT,
                 q1 INTEGER, q2 INTEGER, q3 INTEGER, q4 INTEGER, q5 INTEGER,
                 q6 INTEGER, q7 INTEGER, q8 INTEGER, q9 INTEGER, q10 INTEGER,
                 q11 INTEGER, q12 INTEGER, q13 INTEGER, q14 INTEGER, q15 INTEGER,
-                q16 INTEGER,     -- ΝΕΟ
+                q16 INTEGER,
                 comments TEXT
             );
         """)
         conn.commit()
     except Exception as e:
-        log.error(f"❌ Error: {e}")
+        print(f"Error init survey db: {e}")
     finally:
         cur.close()
         return_db_conn(conn)
@@ -1245,24 +1244,25 @@ async def submit_survey(data: SurveyResponse):
     conn = get_db_conn()
     cur = conn.cursor()
     try:
-        # Χρησιμοποιούμε το όνομα survey_results που έχεις στο Railway
+        # 21 πεδία συνολικά (μαζί με gender, age, q16)
         query = """
             INSERT INTO survey_final 
-            (used_bot, usage_context, scenarios_tested, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, comments)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (used_bot, usage_context, scenarios_tested, gender, age, 
+             q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, 
+             q11, q12, q13, q14, q15, q16, comments)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cur.execute(query, (
-            data.usedBot, data.usageContext, data.scenarios,
+            data.usedBot, data.usageContext, data.scenarios, data.gender, data.age,
             data.q1, data.q2, data.q3, data.q4, data.q5,
             data.q6, data.q7, data.q8, data.q9, data.q10,
-            data.q11, data.q12, data.q13, data.q14, data.q15,
+            data.q11, data.q12, data.q13, data.q14, data.q15, data.q16,
             data.comments
         ))
         conn.commit()
-        return {"status": "success", "message": "Survey saved successfully!"}
+        return {"status": "success"}
     except Exception as e:
-        if conn: conn.rollback()
-        log.error(f"Survey error: {e}")
+        logging.error(f"Survey Error: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         cur.close()
