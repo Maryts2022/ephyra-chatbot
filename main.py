@@ -232,12 +232,13 @@ async def submit_survey(data: SurveyResponse):
     conn = get_db_conn()
     cur = conn.cursor()
     try:
+        # ΔΙΟΡΘΩΣΗ: Προσθέσαμε 21 %s για να ταιριάζουν με τις 21 στήλες
         query = """
             INSERT INTO survey_final 
             (used_bot, usage_context, scenarios_tested, gender, age, 
              q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, 
              q11, q12, q13, q14, q15, q16, comments)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cur.execute(query, (
             data.usedBot, data.usageContext, data.scenarios, data.gender, data.age,
@@ -250,6 +251,7 @@ async def submit_survey(data: SurveyResponse):
         return {"status": "success"}
     except Exception as e:
         if conn: conn.rollback()
+        log.error(f"❌ Survey DB Error: {e}") # Αυτό θα σου δείξει το ακριβές λάθος στα Logs
         return {"status": "error", "message": str(e)}
     finally:
         cur.close()
