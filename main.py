@@ -232,7 +232,7 @@ async def submit_survey(data: SurveyResponse):
     conn = get_db_conn()
     cur = conn.cursor()
     try:
-        # 1. Πλήρες Query με όλες τις 22 στήλες (μαζί με gender, age, q16)
+        # 1. Το Query με τη σωστή σειρά στηλών
         query = """
             INSERT INTO survey_final 
             (used_bot, usage_context, scenarios_tested, gender, age, 
@@ -241,21 +241,24 @@ async def submit_survey(data: SurveyResponse):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
-        # 2. Η σειρά των δεδομένων πρέπει να είναι ΑΚΡΙΒΩΣ ίδια με τις στήλες παραπάνω
+        # 2. Τα δεδομένα στην ΑΚΡΙΒΗ σειρά που ορίσαμε παραπάνω
         cur.execute(query, (
-            data.usedBot, data.usageContext, data.scenarios, 
-            data.gender, data.age,  # Αυτά έμπαιναν σε λάθος θέση
+            data.usedBot, 
+            data.usageContext, 
+            data.scenarios, 
+            data.gender,      # 4η στήλη
+            data.age,         # 5η στήλη
             data.q1, data.q2, data.q3, data.q4, data.q5,
             data.q6, data.q7, data.q8, data.q9, data.q10,
             data.q11, data.q12, data.q13, data.q14, data.q15,
-            data.q16,               # Η 16η ερώτηση
-            data.comments
+            data.q16,         # 21η στήλη
+            data.comments     # 22η στήλη
         ))
         conn.commit()
         return {"status": "success"}
     except Exception as e:
         if conn: conn.rollback()
-        log.error(f"❌ Database Insertion Error: {e}")
+        logging.error(f"❌ Error during survey submission: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         cur.close()
