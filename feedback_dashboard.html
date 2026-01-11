@@ -179,11 +179,28 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Ημερομηνία</th>
-            <th>Ερώτηση</th>
-            <th>Απάντηση</th>
-            <th>Feedback</th>
-          </tr>
+            <th>Date</th>
+        
+         <th>Φύλο</th>
+          <th>Ηλικία</th>
+
+        <th>Q1</th>
+        <th>Q2</th>
+        <th>Q3</th>
+        <th>Q4</th>
+        <th>Q5</th>
+        <th>Q6</th>
+        <th>Q7</th>
+        <th>Q8</th>
+        <th>Q9</th>
+        <th>Q10</th>
+        <th>Q11</th>
+        <th>Q12</th>
+        <th>Q13</th>
+        <th>Q14</th>
+        <th>Q15</th>
+
+        <th>Q16</th>
         </thead>
         <tbody id="chatTableBody">
           <tr><td colspan="5" style="text-align:center; padding:20px;">Φόρτωση...</td></tr>
@@ -348,21 +365,28 @@
       }
 
       tbody.innerHTML = pageData.map(item => `
-        <tr>
-          <td>#${item.id}</td>
-          <td style="font-size:11px">${item.timestamp}</td>
-          <td class="q-cell">${item.q1||'-'}</td><td class="q-cell">${item.q2||'-'}</td>
-          <td class="q-cell">${item.q3||'-'}</td><td class="q-cell">${item.q4||'-'}</td>
-          <td class="q-cell">${item.q5||'-'}</td><td class="q-cell">${item.q6||'-'}</td>
-          <td class="q-cell">${item.q7||'-'}</td><td class="q-cell">${item.q8||'-'}</td>
-          <td class="q-cell">${item.q9||'-'}</td><td class="q-cell">${item.q10||'-'}</td>
-          <td class="q-cell">${item.q11||'-'}</td><td class="q-cell">${item.q12||'-'}</td>
-          <td class="q-cell">${item.q13||'-'}</td><td class="q-cell">${item.q14||'-'}</td>
-          <td class="q-cell">${item.q15||'-'}</td>
-          <td style="font-size:11px; max-width:150px;">${item.comments||'-'}</td>
-        </tr>
-      `).join('');
-  }
+    <tr>
+      <td>#${item.id}</td>
+      <td style="font-size:11px">${item.timestamp}</td>
+
+      <td style="font-size:12px">${item.gender || '-'}</td>
+      <td style="font-size:12px">${item.age || '-'}</td>
+
+      <td class="q-cell">${item.q1||'-'}</td><td class="q-cell">${item.q2||'-'}</td>
+      <td class="q-cell">${item.q3||'-'}</td><td class="q-cell">${item.q4||'-'}</td>
+      <td class="q-cell">${item.q5||'-'}</td><td class="q-cell">${item.q6||'-'}</td>
+      <td class="q-cell">${item.q7||'-'}</td><td class="q-cell">${item.q8||'-'}</td>
+      <td class="q-cell">${item.q9||'-'}</td><td class="q-cell">${item.q10||'-'}</td>
+      <td class="q-cell">${item.q11||'-'}</td><td class="q-cell">${item.q12||'-'}</td>
+      <td class="q-cell">${item.q13||'-'}</td><td class="q-cell">${item.q14||'-'}</td>
+      <td class="q-cell">${item.q15||'-'}</td>
+
+      <td class="q-cell" style="font-weight:bold; color:#1e90ff;">${item.q16||'-'}</td>
+
+      <td style="font-size:11px; max-width:150px;">${item.comments||'-'}</td>
+    </tr>
+  `).join('');
+}
 
   // --- 5. PAGINATION CONTROLS ---
   function prevChatPage() { if(currentChatPage > 1) { currentChatPage--; renderChatTable(); } }
