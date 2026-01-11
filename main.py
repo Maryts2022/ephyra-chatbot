@@ -1083,7 +1083,6 @@ async def get_feedback_stats(days: int = 30, detailed: bool = False):
             if lang_code in language_distribution:
                 language_distribution[lang_code] = count
         
-        language_distribution = {"el": 100, "en": 0}
         
         # Sentiment trend
         prev_since = since_date - timedelta(days=days)
