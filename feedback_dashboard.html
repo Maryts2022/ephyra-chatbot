@@ -307,6 +307,7 @@
   }
 
   // --- 3. RENDER CHAT TABLE (με σελίδες) ---
+  // --- 3. RENDER CHAT TABLE (ΔΙΟΡΘΩΜΕΝΟ) ---
   function renderChatTable() {
       const tbody = document.getElementById('chatTableBody');
       const start = (currentChatPage - 1) * ROWS_PER_PAGE;
@@ -318,6 +319,45 @@
 
       if(pageData.length === 0) {
           tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
+          return;
+      }
+
+      tbody.innerHTML = pageData.map(item => `
+        <tr>
+          <td>#${item.id}</td>
+          <td style="font-size:11px; white-space:nowrap;">
+            ${item.timestamp ? item.timestamp.replace('T', ' ').split('.')[0] : '-'}
+          </td>
+          
+          <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;">
+            ${item.user_question || '-'}
+          </td>
+
+          <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; color: #a0aec0;">
+            ${item.bot_response || '-'}
+          </td>
+
+          <td>
+            ${item.is_positive 
+              ? '<span class="badge badge-pos">👍 Θετικό</span>' 
+              : '<span class="badge badge-neg">👎 Αρνητικό</span>'}
+          </td>
+        </tr>
+      `).join('');
+  }
+  // --- 4. RENDER SURVEY TABLE (με σελίδες) ---
+  // --- 4. RENDER SURVEY TABLE (ΔΙΟΡΘΩΜΕΝΟ ΜΕ ΦΥΛΟ/ΗΛΙΚΙΑ/Q16) ---
+  function renderSurveyTable() {
+      const tbody = document.getElementById('surveyTableBody');
+      const start = (currentSurveyPage - 1) * ROWS_PER_PAGE;
+      const end = start + ROWS_PER_PAGE;
+      const pageData = allSurveyData.slice(start, end);
+      const totalPages = Math.ceil(allSurveyData.length / ROWS_PER_PAGE) || 1;
+
+      document.getElementById('surveyPageInfo').innerText = `Σελίδα ${currentSurveyPage} από ${totalPages} (Σύνολο: ${allSurveyData.length})`;
+
+      if(pageData.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="21" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
           return;
       }
 
@@ -337,41 +377,9 @@
           <td class="q-cell">${item.q11||'-'}</td><td class="q-cell">${item.q12||'-'}</td>
           <td class="q-cell">${item.q13||'-'}</td><td class="q-cell">${item.q14||'-'}</td>
           <td class="q-cell">${item.q15||'-'}</td>
-
+          
           <td class="q-cell" style="font-weight:bold; color:#1e90ff;">${item.q16||'-'}</td>
 
-          <td style="font-size:11px; max-width:150px;">${item.comments||'-'}</td>
-        </tr>
-      `).join('');
-  }
-
-  // --- 4. RENDER SURVEY TABLE (με σελίδες) ---
-  function renderSurveyTable() {
-      const tbody = document.getElementById('surveyTableBody');
-      const start = (currentSurveyPage - 1) * ROWS_PER_PAGE;
-      const end = start + ROWS_PER_PAGE;
-      const pageData = allSurveyData.slice(start, end);
-      const totalPages = Math.ceil(allSurveyData.length / ROWS_PER_PAGE) || 1;
-
-      document.getElementById('surveyPageInfo').innerText = `Σελίδα ${currentSurveyPage} από ${totalPages} (Σύνολο: ${allSurveyData.length})`;
-
-      if(pageData.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="18" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
-          return;
-      }
-
-      tbody.innerHTML = pageData.map(item => `
-        <tr>
-          <td>#${item.id}</td>
-          <td style="font-size:11px">${item.timestamp}</td>
-          <td class="q-cell">${item.q1||'-'}</td><td class="q-cell">${item.q2||'-'}</td>
-          <td class="q-cell">${item.q3||'-'}</td><td class="q-cell">${item.q4||'-'}</td>
-          <td class="q-cell">${item.q5||'-'}</td><td class="q-cell">${item.q6||'-'}</td>
-          <td class="q-cell">${item.q7||'-'}</td><td class="q-cell">${item.q8||'-'}</td>
-          <td class="q-cell">${item.q9||'-'}</td><td class="q-cell">${item.q10||'-'}</td>
-          <td class="q-cell">${item.q11||'-'}</td><td class="q-cell">${item.q12||'-'}</td>
-          <td class="q-cell">${item.q13||'-'}</td><td class="q-cell">${item.q14||'-'}</td>
-          <td class="q-cell">${item.q15||'-'}</td>
           <td style="font-size:11px; max-width:150px;">${item.comments||'-'}</td>
         </tr>
       `).join('');
