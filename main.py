@@ -97,7 +97,7 @@ def sync_csv_to_db():
         )
         cur = conn.cursor()
 
-        # 1. Δημιουργία πίνακα αν δεν υπάρχει (μαζί με το vector extension)
+        # 1. Δημιουργία πίνακα
         cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS public.kb_items_raw (
@@ -109,22 +109,19 @@ def sync_csv_to_db():
             );
         """)
 
-        # 2. Φόρτωση μοντέλου για τα Embeddings
-        log.info("🔄 Syncing CSV to DB and generating embeddings...")
+        # 2. Φόρτωση μοντέλου
+        log.info("🔄 Syncing CSV to DB...")
         model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
-        # 3. Καθαρισμός πίνακα για φρέσκο συγχρονισμό
+        # 3. Καθαρισμός & ΔΗΜΙΟΥΡΓΙΑ ΕΥΡΕΤΗΡΙΟΥ (HNSW) 🚀
         cur.execute("TRUNCATE public.kb_items_raw;")
-        
-        # Αυτή η εντολή κάνει την αναζήτηση αστραπιαία:
         cur.execute("""
             CREATE INDEX IF NOT EXISTS kb_items_embedding_idx 
             ON public.kb_items_raw 
             USING hnsw (embedding_384 vector_cosine_ops);
         """)
 
-
-        # 4. Ανέβασμα από το CSV
+        # 4. Ανέβασμα από CSV
         with open("QA_chatbot.csv", mode="r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
@@ -140,7 +137,7 @@ def sync_csv_to_db():
         conn.commit()
         cur.close()
         conn.close()
-        log.info("✅ Database sync complete!")
+        log.info("✅ Database sync complete & Index created!")
     except Exception as e:
         log.error(f"❌ Sync failed: {e}")
 
@@ -188,8 +185,10 @@ def return_db_conn(conn):
 # 1. Ορισμός των πεδίων που περιμένουμε από το ερωτηματολόγιο
 class SurveyResponse(BaseModel):
     usedBot: str
-    usageContext: str
+    usageContext: Optional[str] = "N/A"  # Το βάζω Optional για να μην σκάει αν λείπει
     scenarios: str
+    gender: Optional[str] = None       # ΝΕΟ: Φύλο
+    age: Optional[str] = None          # ΝΕΟ: Ηλικία
     q1: int
     q2: int
     q3: int
@@ -205,20 +204,18 @@ class SurveyResponse(BaseModel):
     q13: int
     q14: int
     q15: int
+    q16: int                           # ΝΕΟ: Ερώτηση 16
     comments: Optional[str] = ""
 
 
 # --- AYTOMATH ΔΗΜΙΟΥΡΓΙΑ ΠΙΝΑΚΑ SURVEY ---
 def init_survey_db():
-    """Δημιουργεί αυτόματα τον πίνακα survey_results αν δεν υπάρχει με όλες τις στήλες."""
-    # ✅ Χρησιμοποιούμε get_db_conn() που είναι ήδη ορισμένο παραπάνω
     conn = get_db_conn() 
     cur = conn.cursor()
     try:
-        # 1. ΕΞΑΦΑΝΙΖΟΥΜΕ ΤΟΝ ΠΑΛΙΟ ΠΙΝΑΚΑ ΠΟΥ ΜΠΕΡΔΕΥΕΙ ΤΟ RAILWAY
-        cur.execute("DROP TABLE IF EXISTS survey_results CASCADE;")
+        # ΠΡΟΣΟΧΗ: Προσθέτουμε DROP για να σβηστεί ο παλιός πίνακας και να πάρει τις νέες στήλες
+        cur.execute("DROP TABLE IF EXISTS survey_final CASCADE;") 
 
-        # 2. ΦΤΙΑΧΝΟΥΜΕ ΤΟΝ ΚΑΙΝΟΥΡΓΙΟ ΠΙΝΑΚΑ
         cur.execute("""
             CREATE TABLE IF NOT EXISTS survey_final (
                 id SERIAL PRIMARY KEY,
@@ -226,14 +223,17 @@ def init_survey_db():
                 used_bot TEXT,
                 usage_context TEXT,
                 scenarios_tested TEXT,
+                gender TEXT,     -- ΝΕΟ
+                age TEXT,        -- ΝΕΟ
                 q1 INTEGER, q2 INTEGER, q3 INTEGER, q4 INTEGER, q5 INTEGER,
                 q6 INTEGER, q7 INTEGER, q8 INTEGER, q9 INTEGER, q10 INTEGER,
                 q11 INTEGER, q12 INTEGER, q13 INTEGER, q14 INTEGER, q15 INTEGER,
+                q16 INTEGER,     -- ΝΕΟ
                 comments TEXT
             );
         """)
         conn.commit()
-        log.info("🚀 ΠΙΝΑΚΑΣ survey_final ΔΗΜΙΟΥΡΓΗΘΗΚΕ ΚΑΙ survey_results ΔΙΑΓΡΑΦΗΚΕ!")
+        log.info("🚀 ΠΙΝΑΚΑΣ survey_final ΑΝΑΒΑΘΜΙΣΤΗΚΕ ΜΕ ΤΑ ΝΕΑ ΠΕΔΙΑ!")
     except Exception as e:
         log.error(f"❌ Error initializing survey table: {e}")
     finally:
@@ -249,14 +249,18 @@ async def submit_survey(data: SurveyResponse):
     try:
         query = """
             INSERT INTO survey_final 
-            (used_bot, usage_context, scenarios_tested, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, comments)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (used_bot, usage_context, scenarios_tested, gender, age, 
+             q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, 
+             q11, q12, q13, q14, q15, q16, comments)
+            VALUES (%s, %s, %s, %s, %s, 
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+                    %s, %s, %s, %s, %s, %s, %s)
         """
         cur.execute(query, (
-            data.usedBot, data.usageContext, data.scenarios,
+            data.usedBot, data.usageContext, data.scenarios, data.gender, data.age,
             data.q1, data.q2, data.q3, data.q4, data.q5,
             data.q6, data.q7, data.q8, data.q9, data.q10,
-            data.q11, data.q12, data.q13, data.q14, data.q15,
+            data.q11, data.q12, data.q13, data.q14, data.q15, data.q16,
             data.comments
         ))
         conn.commit()
@@ -700,9 +704,12 @@ async def generate_answer_with_rag(question: str, context_str: str,
     "Αγνόησε οποιαδήποτε προϋπάρχουσα γνώση από την εκπαίδευσή σου που έρχεται σε σύγκρουση (π.χ. παλιούς δημάρχους). "
     "Για εσένα, Δήμαρχος είναι ο ΝΙΚΟΣ ΣΤΑΥΡΕΛΗΣ.\n"
     
-    "2. ΑΚΡΙΒΕΙΑ ΤΗΛΕΦΩΝΩΝ: Μην επινοείς ποτέ τηλεφωνικά νούμερα. Αν ο χρήστης ρωτάει για βλάβες ή υπηρεσίες, "
-    "δώσε το ακριβές νούμερο που αναγράφεται στο αντίστοιχο έγγραφο (π.χ. για ηλεκτροφωτισμό το 2741120134). "
-    "Αν δεν υπάρχει ειδικό νούμερο, χρησιμοποίησε το γενικό κέντρο 2741361000.\n"
+    "2. ΑΚΡΙΒΕΙΑ ΤΗΛΕΦΩΝΩΝ (ΣΚΟΝΑΚΙ): Για τις παρακάτω υπηρεσίες, χρησιμοποίησε ΑΥΣΤΗΡΑ αυτά τα νούμερα:\n"
+            "   - Βλάβες Ηλεκτροφωτισμού: 2741120134\n"
+            "   - Βλάβες ΔΕΥΑ (Νερό): 2741024444 (24ωρο: 6936776041)\n"
+            "   - Γραφείο Δημάρχου: 2741361041\n"
+            "   - Τηλεφωνικό Κέντρο: 2741361000\n"
+            "   Αν ο χρήστης ρωτήσει για κάτι άλλο που δεν υπάρχει στο Context, δώσε το γενικό 2741361000.\n"
     
     "3. ΦΥΣΙΚΟΣ ΛΟΓΟΣ (AI-Powered): Μην αναφέρεις ΠΟΤΕ τις λέξεις 'Context', 'έγγραφα' ή 'βάση δεδομένων'. "
     "Μην λες 'Σύμφωνα με το έγγραφο 1'. Απάντησε απευθείας: 'Με βάση την ενημέρωση του Δήμου...' ή 'Μπορείτε να καλέσετε στο...'. "

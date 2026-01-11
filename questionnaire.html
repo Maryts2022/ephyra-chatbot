@@ -495,6 +495,18 @@ button.secondary{
         </div>
       </section>
 
+       <!-- Ερώτηση 16 -->
+      <section class="question" data-question="q16">
+        <p class="q-title">Ερώτηση 16</p>
+        <p class="q-text">Μείνατε ευχαριστημένοι από την χρήση του Ψηφιακού βοηθού "Εφύρα";</p>
+        <div class="options">
+          <label><input type="checkbox" name="q16" value="1">Ναι </label>
+          <label><input type="checkbox" name="q16" value="2"> Όχι</label>
+          <label><input type="checkbox" name="q16" value="3"> Μερικώς</label>
+        </div>
+      </section>
+
+
       <div class="submit-wrap">
         <button type="submit">Υποβολή</button>
       </div>
@@ -531,7 +543,7 @@ const API_URL = "";
     // --- 3. ΕΜΦΑΝΙΣΗ/ΑΠΟΚΡΥΨΗ ΕΝΟΤΗΤΩΝ (Αν πατήσει "Ναι" στο Bot) ---
     const scenariosSection = document.getElementById('scenariosSection');
     const mainQuestions = document.getElementById('mainQuestions');
-    const optionalBox = document.getElementById('optionalBox'); // Αν υπάρχει
+    const optionalBox = document.getElementById('optional-demographics');
 
     document.querySelectorAll('input[name="usedBot"]').forEach(cb => {
       cb.addEventListener('change', () => {
@@ -569,8 +581,8 @@ const API_URL = "";
                 comments: document.getElementById('comments')?.value || ""
             };
 
-            // Συλλογή q1-q15
-            for (let i = 1; i <= 15; i++) {
+            // Συλλογή q1-q16
+            for (let i = 1; i <= 16; i++) {
                 let val = getCheckedValue(`q${i}`);
                 surveyData[`q${i}`] = val ? parseInt(val) : 0;
             }
