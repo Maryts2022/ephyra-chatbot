@@ -251,10 +251,10 @@ async def submit_survey(data: SurveyResponse):
             INSERT INTO survey_final 
             (used_bot, usage_context, scenarios_tested, gender, age, 
              q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, 
-             q11, q12, q13, q14, q15, q16, comments)
+             q11, q12, q13, q14, q15, q16)
             VALUES (%s, %s, %s, %s, %s, 
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, %s, %s)
+                    %s, %s, %s, %s, %s, %s)
         """
         cur.execute(query, (
             data.usedBot, data.usageContext, data.scenarios, data.gender, data.age,
@@ -1288,14 +1288,14 @@ async def submit_survey(data: SurveyResponse):
 # 3. Το "μονοπάτι" για να βλέπουμε τα αποτελέσματα στο Dashboard
 @app.get("/survey_results")
 async def get_survey_final():
-    conn = None # Αρχικοποίηση
+    conn = None
     try:
         conn = get_db_conn()
         cur = conn.cursor()
         
-        # Ζητάμε όλα τα δεδομένα του ερωτηματολογίου
+        # Προσθέτουμε gender, age και q16 στην αναζήτηση
         cur.execute("""
-            SELECT id, timestamp, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, comments 
+            SELECT id, timestamp, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, gender, age, q16 
             FROM survey_final 
             ORDER BY timestamp DESC
         """)
@@ -1308,22 +1308,19 @@ async def get_survey_final():
                 "timestamp": r[1].strftime("%Y-%m-%d %H:%M:%S") if r[1] else "",
                 "q1": r[2], "q2": r[3], "q3": r[4], "q4": r[5], "q5": r[6],
                 "q6": r[7], "q7": r[8], "q8": r[9], "q9": r[10], "q10": r[11],
-                "q11": r[12], "q12": r[13], "q13": r[14], "q14": r[15], "q15": r[16],
-                "comments": r[17]
+                "q11": r[12], "q12": r[13], "q13": r[14], "q14": r[15],
+                "gender": r[16],  # ΝΕΟ
+                "age": r[17],     # ΝΕΟ
+                "q16": r[18]      # ΝΕΟ
             })
-        
         cur.close()
         return results
-
     except Exception as e:
-        # Αν γίνει λάθος, το καταγράφουμε και επιστρέφουμε κενή λίστα
         logging.error(f"Error getting survey results: {e}")
         return []
-        
     finally:
-        # Η ΣΗΜΑΝΤΙΚΗ ΔΙΟΡΘΩΣΗ: Επιστροφή στο Pool!
-        if conn:
-            return_db_conn(conn)
+        if conn: return_db_conn(conn)
+
 # ✅ 3. ΤΕΛΕΥΤΑΙΟ ΣΤΟ ΑΡΧΕΙΟ: Η ΕΚΚΙΝΗΣΗ
 if __name__ == "__main__":
     import uvicorn

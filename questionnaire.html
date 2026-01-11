@@ -573,11 +573,16 @@ const API_URL = "";
         form.addEventListener('submit', async function(e) {
             e.preventDefault(); // Σταματάμε το refresh
 
+        
             // Συλλογή Δεδομένων
             const surveyData = {
-                usedBot: getCheckedValue('usedBot') || "no",
-                usageContext: document.getElementById('usageContext')?.value || "N/A",
-                scenarios: getCheckedValue('timesUsed') || "None", // Προσοχή στο name
+               usedBot: getCheckedValue('usedBot') || "no",
+               usageContext: document.getElementById('usageContext')?.value || "N/A",
+               scenarios: getCheckedValue('timesUsed') || "None",
+    
+             // ΠΡΟΣΘΗΚΗ: Πρέπει να παίρνουμε και αυτά τα δύο!
+               gender: getCheckedValue('gender') || "N/A",
+               age: getCheckedValue('age') || "N/A"
             };
 
             // Συλλογή q1-q16
