@@ -608,10 +608,10 @@ def retrieve_context(cursor, question: str, top_k: int = 10) -> List[Dict]:
     """
    # 1. Εκτέλεση και των δύο αναζητήσεων (Semantic & Keyword)
     # Αυξάνουμε το top_k για να έχουμε μεγαλύτερη πιθανότητα να βρούμε την πληροφορία
-    semantic_results = semantic_search(cursor, question, top_k=20)
+    semantic_results = semantic_search(cursor, question, top_k=8)
     top_sim = semantic_results[0]['similarity'] if semantic_results else 0
     
-    keyword_results = keyword_search(cursor, question, top_k=20)
+    keyword_results = keyword_search(cursor, question, top_k=4)
 
     # 2. ΥΒΡΙΔΙΚΟΣ ΣΥΝΔΥΑΣΜΟΣ (Hybrid Search) - ΧΩΡΙΣ ΠΕΡΙΟΡΙΣΜΟΥΣ
     # Χρησιμοποιούμε dictionary για να ενώσουμε τα αποτελέσματα χωρίς διπλότυπα
