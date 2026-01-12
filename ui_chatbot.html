@@ -577,7 +577,7 @@
   <p><strong>Σενάριο χρήσης:</strong></p>
   <p>Αναζήτηση πληροφοριών για ΚΕΠ, δημοτικές δομές και υπηρεσίες</p>
   <p>
-    <p>1.Τι είναι τα ΚΕΠ και ποιο είναι το ωράριό τους;</p>
+    <p>1.Που είναι τα ΚΕΠ της πόλης και ποιο είναι το ωράριό τους;</p>
     <p>2.Ποια είναι τα στοιχεία επικοινωνίας του ΚΕΠ Κορίνθου;</p>
     <p>3.Πού καλώ για βλάβες ηλεκτροφωτισμού;</p>
     <p>4.Πώς επικοινωνώ με τη ΔΕΥΑ Κορίνθου;</p>
@@ -1453,14 +1453,12 @@ form.addEventListener('submit', async (e) => {
     input.value = '';
     conversationHistory.push({ role: 'user', content: text });
 
-    // 2. Δημιουργία Μπλε Κουτιού με το μήνυμα αναμονής
-    // ΠΡΟΣΟΧΗ: Δεν καλούμε το typing(true) για να μην βγουν διπλές τελείες
+    // 2. Δημιουργία Μπλε Κουτιού με κείμενο αναμονής (Placeholder)
     const botMsg = document.createElement('div');
     botMsg.className = 'msg bot';
     botMsg.style.fontStyle = 'italic';
-    botMsg.style.color = '#555'; // Λίγο πιο αχνό
-    botMsg.innerHTML = "Η Εφύρα σκέφτεται..."; 
-    
+    botMsg.style.color = '#666'; 
+    botMsg.innerHTML = "Η Εφύρα σκέφτεται..."; // Αυτό θα φαίνεται μέχρι να έρθει η απάντηση
     messages.appendChild(botMsg);
     messages.scrollTop = messages.scrollHeight;
 
@@ -1479,7 +1477,7 @@ form.addEventListener('submit', async (e) => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullAnswer = "";
-        let isFirstChunk = true;
+        let isFirstChunk = true; // Σημαία για το πρώτο κομμάτι
 
         while (true) {
             const { value, done } = await reader.read();
@@ -1488,17 +1486,16 @@ form.addEventListener('submit', async (e) => {
             const chunk = decoder.decode(value, { stream: true });
             if (!chunk) continue;
 
-            // --- ΣΤΙΓΜΗ ΑΛΛΑΓΗΣ ---
-            // Μόλις έρθει το πρώτο γράμμα:
+            // --- Η ΑΛΛΑΓΗ ---
+            // Μόλις έρθει το πρώτο γράμμα, σβήνουμε το "σκέφτεται..."
             if (isFirstChunk) {
-                botMsg.innerHTML = "";       // Σβήνουμε το "σκέφτεται..."
-                botMsg.style.fontStyle = 'normal'; // Επαναφορά κανονικών γραμμάτων
-                botMsg.style.color = '';     // Επαναφορά χρώματος
+                botMsg.innerHTML = "";       
+                botMsg.style.fontStyle = 'normal'; 
+                botMsg.style.color = '';     
                 isFirstChunk = false;
             }
             
             fullAnswer += chunk;
-            // Χρησιμοποιούμε linkify για να γίνουν τα link ενεργά αμέσως
             botMsg.innerHTML = linkify(fullAnswer);
             messages.scrollTop = messages.scrollHeight;
         }
@@ -1510,10 +1507,10 @@ form.addEventListener('submit', async (e) => {
 
     } catch (err) {
         console.error('Error:', err);
-        // Αν γίνει λάθος, το γράφουμε μέσα στο κουτάκι για να το δεις
+        // Εμφάνιση σφάλματος μέσα στο κουτάκι αντί για νέο μήνυμα
         botMsg.classList.add('error');
         botMsg.style.fontStyle = 'normal';
-        botMsg.innerHTML = '⚠️ Συγγνώμη, υπήρξε πρόβλημα σύνδεσης.';
+        botMsg.innerHTML = '⚠️ Συγγνώμη, υπήρξε πρόβλημα σύνδεσης. Παρακαλώ δοκιμάστε ξανά.';
     } finally {
         input.disabled = false;
         form.querySelector('button').disabled = false;

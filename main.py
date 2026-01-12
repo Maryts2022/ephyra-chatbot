@@ -26,13 +26,11 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from elevenlabs.client import ElevenLabs
 import re
-
 from sentence_transformers import SentenceTransformer
 from langdetect import detect, LangDetectException
 from fastapi.middleware.cors import CORSMiddleware
-
 import csv
-
+import string
 
  
 # Δημιουργούμε μια λίστα για να αποθηκεύσουμε τις ερωταπαντήσεις
