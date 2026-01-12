@@ -815,13 +815,20 @@ async def ask(request: Request, body: AskBody):
     if not question:
         return {"answer": "Δεν έλαβα ερώτηση", "quality": "error"}
 
-    # 2. Προετοιμασία Context από CSV (με ΕΞΥΠΝΗ αναζήτηση)
+    # --- ΝΕΟ ΚΟΜΜΑΤΙ: Έλεγχος για άμεση απάντηση (Cheat Sheet) ---
+    direct_resp = get_direct_answer(question)
+    if direct_resp:
+        # Αν βρούμε άμεση απάντηση, τη στέλνουμε αμέσως σαν stream!
+        async def direct_stream():
+            yield direct_resp["answer"]
+        return StreamingResponse(direct_stream(), media_type="text/plain")
+    # -------------------------------------------------------------
+
+    # 2. Προετοιμασία Context από CSV (αν δεν υπάρχει άμεση απάντηση)
     csv_context = ""
     
-    # Συνάρτηση καθαρισμού (αφαιρεί σημεία στίξης και κάνει μικρά γράμματα)
     def clean_text(t):
         if not t: return ""
-        # Μετατροπή σε πεζά και αφαίρεση σημείων στίξης
         return t.lower().translate(str.maketrans('', '', string.punctuation)).strip()
 
     clean_user_q = clean_text(question)
@@ -834,8 +841,6 @@ async def ask(request: Request, body: AskBody):
             csv_a = values[1]
             
             clean_csv_q = clean_text(csv_q_raw)
-            
-            # Έλεγχος αν η ερώτηση ταιριάζει (αμφίδρομα) χωρίς σύμβολα
             if clean_csv_q and (clean_csv_q in clean_user_q or clean_user_q in clean_csv_q):
                 csv_context += f"\nΣχετική πληροφορία από CSV: {csv_a}\n"
 
@@ -845,7 +850,6 @@ async def ask(request: Request, body: AskBody):
             cursor = conn.cursor()
             
             # 3. Λήψη Context από τη Βάση (Retrieve)
-            # Αν βρήκαμε ήδη πολλά στο CSV, ψάχνουμε λιγότερα στη βάση για ταχύτητα
             db_context_docs = retrieve_context(cursor, question, top_k=5)
             db_context_text = ""
             for doc in db_context_docs:
@@ -856,7 +860,7 @@ async def ask(request: Request, body: AskBody):
 
             all_context = csv_context + "\n" + db_context_text
 
-            # 4. Κλήση OpenAI με Streaming
+            # 4. Κλήση OpenAI
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -868,7 +872,6 @@ async def ask(request: Request, body: AskBody):
                 stream=True
             )
 
-            # 5. Yielding chunks (Στέλνουμε την απάντηση κομμάτι-κομμάτι)
             for chunk in response:
                 if chunk.choices and chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
