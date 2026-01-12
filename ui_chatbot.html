@@ -1451,12 +1451,9 @@ form.addEventListener('submit', async (e) => {
     input.value = '';
     conversationHistory.push({ role: 'user', content: text });
 
-    // 2. Εμφάνιση Typing και δημιουργία Bot Bubble
+    // 2. Εμφάνιση του "Η Εφύρα σκέφτεται..."
+    // (ΔΕΝ δημιουργούμε ακόμα το μπλε κουτί της απάντησης)
     typing(true);
-    const botMsg = document.createElement('div');
-    botMsg.className = 'msg bot';
-    messages.appendChild(botMsg);
-    messages.scrollTop = messages.scrollHeight;
 
     try {
         const response = await fetch(`${API_URL}/ask`, {
@@ -1470,12 +1467,20 @@ form.addEventListener('submit', async (e) => {
 
         if (!response.ok) throw new Error('Network error');
 
-        // 3. Διαχείριση Streaming (Ανάγνωση ροής δεδομένων)
+        // 3. Προετοιμασία Streaming
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullAnswer = "";
 
+        // --- Η ΚΡΙΣΙΜΗ ΑΛΛΑΓΗ ---
+        // Σβήνουμε το "σκέφτεται" ΤΩΡΑ, ακριβώς πριν αρχίσουμε να γράφουμε
         typing(false);
+
+        // Και ΤΩΡΑ δημιουργούμε το κουτί για την απάντηση
+        const botMsg = document.createElement('div');
+        botMsg.className = 'msg bot';
+        messages.appendChild(botMsg);
+        messages.scrollTop = messages.scrollHeight;
 
         while (true) {
             const { value, done } = await reader.read();
@@ -1484,21 +1489,23 @@ form.addEventListener('submit', async (e) => {
             const chunk = decoder.decode(value, { stream: true });
             fullAnswer += chunk;
             
-            // Ενημέρωση του bubble σε πραγματικό χρόνο
             botMsg.innerHTML = linkify(fullAnswer);
             messages.scrollTop = messages.scrollHeight;
         }
 
-        // 4. Ολοκλήρωση (Ήχος & Feedback)
+        // 4. Ολοκλήρωση
         conversationHistory.push({ role: 'assistant', content: fullAnswer });
         playResponseAudio(fullAnswer);
         addFeedbackButtonsToElement(botMsg, fullAnswer);
 
     } catch (err) {
-        typing(false);
+        typing(false); // Σβήνουμε το "σκέφτεται" αν γίνει λάθος
         console.error('Streaming Error:', err);
-        botMsg.classList.add('error');
-        botMsg.innerHTML = '⚠️ Συγγνώμη, κάτι πήγε στραβά στη σύνδεση.';
+        
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'msg error';
+        errorMsg.innerText = '⚠️ Συγγνώμη, κάτι πήγε στραβά στη σύνδεση.';
+        messages.appendChild(errorMsg);
     } finally {
         input.disabled = false;
         form.querySelector('button').disabled = false;
