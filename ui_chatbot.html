@@ -1444,15 +1444,14 @@ form.addEventListener('submit', async (e) => {
     const text = input.value.trim();
     if (!text) return;
 
-    // 1. Προετοιμασία UI
+    // 1. Ρυθμίσεις UI (Κλείδωμα κουμπιών)
     input.disabled = true;
     form.querySelector('button').disabled = true;
     addUser(text);
     input.value = '';
     conversationHistory.push({ role: 'user', content: text });
 
-    // 2. Εμφάνιση του "Η Εφύρα σκέφτεται..."
-    // (ΔΕΝ δημιουργούμε ακόμα το μπλε κουτί της απάντησης)
+    // 2. Εμφάνιση ΜΟΝΟ του "Η Εφύρα σκέφτεται..." (Χωρίς μπλε κουτί ακόμα!)
     typing(true);
 
     try {
@@ -1472,11 +1471,12 @@ form.addEventListener('submit', async (e) => {
         const decoder = new TextDecoder();
         let fullAnswer = "";
 
-        // --- Η ΚΡΙΣΙΜΗ ΑΛΛΑΓΗ ---
-        // Σβήνουμε το "σκέφτεται" ΤΩΡΑ, ακριβώς πριν αρχίσουμε να γράφουμε
+        // --- Η ΑΛΛΑΓΗ ΕΙΝΑΙ ΕΔΩ ---
+        
+        // α) Σβήνουμε το "σκέφτεται" ΤΩΡΑ, ακριβώς πριν αρχίσουμε να γράφουμε
         typing(false);
 
-        // Και ΤΩΡΑ δημιουργούμε το κουτί για την απάντηση
+        // β) ΚΑΙ ΤΩΡΑ δημιουργούμε το κουτί για την απάντηση (όχι νωρίτερα)
         const botMsg = document.createElement('div');
         botMsg.className = 'msg bot';
         messages.appendChild(botMsg);
@@ -1512,6 +1512,7 @@ form.addEventListener('submit', async (e) => {
         input.focus();
     }
 });
+
 
 // Βοηθητική συνάρτηση για τα κουμπιά Feedback - ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΕΚΤΟΣ ΤΟΥ SUBMIT
 function addFeedbackButtonsToElement(el, htmlContent) {
