@@ -1522,10 +1522,52 @@ form.addEventListener('submit', async (e) => {
 function addFeedbackButtonsToElement(el, htmlContent) {
     const feedbackDiv = document.createElement('div'); 
     feedbackDiv.className = 'msg-feedback';
-    feedbackDiv.innerHTML = `
-        <button class="feedback-btn" onclick="sendFeedback(\`${htmlContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`, true)">👍</button>
-        <button class="feedback-btn" onclick="sendFeedback(\`${htmlContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`, false)">👎</button>
-    `;
+
+    // 1. 👍 Thumbs Up
+    const thumbsUp = document.createElement('button');
+    thumbsUp.className = 'feedback-btn';
+    thumbsUp.innerHTML = '👍';
+    thumbsUp.title = 'Χρήσιμη απάντηση';
+    thumbsUp.onclick = () => {
+        thumbsUp.classList.add('active');
+        // Αφαιρούμε το active από το άλλο αν υπάρχει
+        if (thumbsDown) thumbsDown.classList.remove('active');
+        sendFeedback(htmlContent, true);
+    };
+
+    // 2. 👎 Thumbs Down
+    const thumbsDown = document.createElement('button');
+    thumbsDown.className = 'feedback-btn';
+    thumbsDown.innerHTML = '👎';
+    thumbsDown.title = 'Δεν ήταν χρήσιμη';
+    thumbsDown.onclick = () => {
+        thumbsDown.classList.add('active');
+        if (thumbsUp) thumbsUp.classList.remove('active');
+        sendFeedback(htmlContent, false);
+    };
+
+    // 3. 📋 Copy Button (ΕΠΕΣΤΡΕΨΕ!)
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'feedback-btn copy-btn';
+    copyBtn.innerHTML = '📋';
+    copyBtn.title = 'Αντιγραφή απάντησης';
+    copyBtn.onclick = () => {
+        // Καθαρίζουμε το κείμενο από HTML tags γι11111111111111111111α1 την αντιγραφή (προαιρετικό, αν θες καθαρό κείμενο)
+        // ή αντιγράφουμε το htmlContent όπως είναι. Εδώ βάζουμε το htmlContent.
+        // Αν θες να αντιγράφει μόνο κείμενο χωρίς tags, πες μου να το αλλάξω.
+        navigator.clipboard.writeText(el.innerText.replace("👍", "").replace("👎", "").replace("📋", "").trim()).then(() => {
+            copyBtn.innerHTML = '✅';
+            setTimeout(() => { copyBtn.innerHTML = '📋'; }, 2000);
+        }).catch(err => {
+            console.error('Copy failed', err);
+            copyBtn.innerHTML = '❌';
+            setTimeout(() => { copyBtn.innerHTML = '📋'; }, 2000);
+        });
+    };
+
+    feedbackDiv.appendChild(thumbsUp);
+    feedbackDiv.appendChild(thumbsDown);
+    feedbackDiv.appendChild(copyBtn);
     el.appendChild(feedbackDiv);
 }
 
