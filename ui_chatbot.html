@@ -285,8 +285,13 @@
 
 /* ------------------------------------ */
 
-/* Εδώ συνεχίζουν τα @media σου... */
-@media (max-width:900px) { ... }
+/* --- RESPONSIVE ΓΙΑ TABLETS (Κάτω από 900px) --- */
+@media (max-width: 900px) {
+    /* Κάνει τις κάρτες 2 στη σειρά αντί για 3 */
+    .cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
 
 /* Optional gentle pulse when speaking (class can be toggled by existing code) */
 .chat-launcher.speaking img{
@@ -979,13 +984,13 @@ const I18N = {
   }
 };
 
-function applyChatLang(lang){
+function applyChatLang(lang) {
   currentLang = lang;
   sessionStorage.setItem("ephyra_lang", lang);
   const t = I18N[lang] || I18N.el;
   const inputEl = document.getElementById('chatField');
   if (inputEl) inputEl.placeholder = t.placeholder;
-  const sendBtn = document.querySelector('#chatForm button[type=\"submit\"]');
+  const sendBtn = document.querySelector('#chatForm button[type="submit"]');
   if (sendBtn) sendBtn.textContent = t.send;
   const toggleBtn = document.getElementById('langToggleBtn');
   if (toggleBtn) {
@@ -997,12 +1002,18 @@ function applyChatLang(lang){
   window.EPHYRA_LANG = lang;
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{
+document.addEventListener('DOMContentLoaded', () => {
   applyChatLang(currentLang);
 });
 
+// Κρατάμε την αναφορά στην αρχική συνάρτηση αν χρειάζεται, 
+// αλλά εδώ ορίζουμε τη νέα λογική.
 const _origShowQuickReplies = showQuickReplies;
-showQuickReplies = function(category='main'){
+
+function showQuickReplies(category = 'main') {
+  quickRepliesContainer.innerHTML = '';
+
+  // Ενημέρωση λίστας κουμπιών βάσει γλώσσας αν είμαστε στο main menu
   const t = I18N[currentLang] || I18N.el;
   if (category === 'main') {
     quickReplyButtons.main = [
@@ -1011,201 +1022,197 @@ showQuickReplies = function(category='main'){
       { text: t.help, action: 'help' }
     ];
   }
-  _origShowQuickReplies(category);
-};
 
-
-    function showQuickReplies(category = 'main') {
-      quickRepliesContainer.innerHTML = '';
-      
-      // Δημιουργώ τα quick reply buttons πρώτα (χωρίς το language button)
-      (quickReplyButtons[category] || quickReplyButtons.main).forEach(btn => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'quick-reply-btn';
-        b.textContent = btn.text;
-        // Αν είναι το κουμπί "Πιστοποιητικά", άλλαξε το label
-       if ((btn.text || '').trim() === 'Πιστοποιητικά') {
-       b.textContent = 'Δείγμα Ερωτήσεων';
-}
-        b.setAttribute('style','background:#fff; border:2px solid #5b86f5; color:#1e2a3b;border-radius:14px;padding:10px 14px;font-weight:600;box-shadow:0 1px 1px rgba(0,0,0,0.05); max-width:150px; overflow:hidden; text-overflow:ellipsis;');
-
-        b.addEventListener('click', (e) => {
-           e.preventDefault();
-           e.stopPropagation();
-  // Αν πατηθεί το "Παραδείγματα Ερωτήσεων"
-  if (btn.action === 'example_inlines') {
-  let examples, title;
+  // Δημιουργία των quick reply buttons
+  const buttons = (quickReplyButtons[category] || quickReplyButtons.main);
   
-  if (currentLang === 'el') {
-    examples = [
-      "Ποιο είναι το τηλέφωνο του δημαρχείου;",
-      "Πώς εκδίδω Ληξιαρχική Πράξη Γέννησης;",
-      "Πώς γίνεται η μεταδημότευση;",
-      "Πώς εκδίδω Πιστοποιητικό Γέννησης;",
-      "Πώς επικοινωνώ με τη ΔΕΥΑ Κορίνθου;",
-      "Πού γίνεται η δήλωση του γάμου;",
-      "Τι ώρες λειτουργεί το ΚΕΠ;"
-    ];
-    title = "Παραδείγματα ερωτήσεων:";
-  } else {
-    examples = [
-      "What is the mayor's office phone number?",
-      "What is the procedure for changing municipality?",
-      "What is the procedure for issuing a birth certificate?",
-      "What is the ΔΕΥΑ phone number?",
-      "What are the operating hours of the KEP?"
-    ];
-    title = "Example questions:";
-  }
+  buttons.forEach(btn => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'quick-reply-btn';
+    b.textContent = btn.text;
 
- const examplesList = examples.map(q => `
-  <button type="button"
-    class="quick-reply-btn"
-    style="display:block;width:100%;text-align:left;margin:6px 0;justify-content:flex-start;"
-    data-example="1">
-   ${q}
-  </button>
-`).join('');
-
-
-  addBot(`
-    <div style="background:#e6f0ff;border:1px solid #c9ddff;border-radius:10px;padding:12px;color:#123d7a;">
-      <div style="font-weight:700;margin-bottom:8px;">${title}</div>
-      ${examplesList}
-      <div style="margin-top:8px;font-size:12px;color:#466aa3;">
-        ${currentLang === 'el' ? 'Κάντε κλικ σε μια ερώτηση για να τη δοκιμάσετε!' : 'Click on a question to try it!'}
-      </div>
-    </div>
-  `, true);
-  return; // δεν ανοίγουμε άλλο μενού
-}
-
-
-// Αν πατηθεί το "Ιστορία της Πόλης" → εμφάνιση panel μέσα στο chat
-if (btn.action === 'city_history' || btn.text === 'Ιστορία της Πόλης' || btn.text === 'City History') {
-  let items, title, subtitle;
-  
-  if (currentLang === 'el') {
-    items = [
-      { label: 'Ιστορία της πόλης', q: 'Ιστορία της πόλης Κορίνθου' },
-      { label: 'Ιστορικά αξιοθέατα', q: 'Ιστορικά αξιοθέατα Κορίνθου' }
-    ];
-    title = "🏛️ Επιλέξτε θέμα:";
-    subtitle = "Κάντε κλικ σε μία επιλογή για να τη δοκιμάσετε.";
-  } else {
-    items = [
-      { label: 'City history', q: 'History of the city of Corinth' },
-      { label: 'Historical landmarks', q: 'Historical landmarks of Corinth' }
-    ];
-    title = "🏛️ Select a topic:";
-    subtitle = "Click on an option to try it.";
-  }
-
-  const list = items.map(it => `
-    <button type="button"
-      class="quick-reply-btn"
-      style="display:block;width:100%;text-align:left;margin:6px 0;justify-content:flex-start;"
-      data-example="1">
-       ${it.q}
-    </button>
-  `).join('');
-
-  addBot(`
-    <div style="background:#e6f0ff;border:1px solid #c9ddff;border-radius:10px;padding:12px;color:#123d7a;">
-      <div style="font-weight:700;margin-bottom:8px;">${title}</div>
-      ${list}
-      <div style="margin-top:8px;font-size:12px;color:#466aa3;">
-        ${subtitle}
-      </div>
-    </div>
-  `, true);
-  return; // δεν ανοίγουμε άλλο μενού
-}
-
-// Αν πατηθεί το "Βοήθεια" → εμφάνιση οδηγιών μέσα στο chat
-if (btn.action === 'help' || btn.text === 'Βοήθεια' || btn.text === 'Help') {
-  let title, listItems, tip;
-  
-  if (currentLang === 'el') {
-    title = "❓ Οδηγίες χρήσης:";
-    listItems = [
-      "Ρωτήστε οτιδήποτε για τον Δήμο Κορινθίων",
-      "Χρησιμοποιήστε φυσική γλώσσα μιλήστε όπως σε έναν υπάλληλο",
-      "Δώστε feedback με 👍 / 👎 για βελτίωση απαντήσεων",
-      "Ενεργοποιήστε τον ήχο <b> (🔊) </b>  για φωνητικές απαντήσεις",
-      "Η συνομιλία αποθηκεύεται τοπικά στον browser σας"
-    ];
-    tip = "💡 <b>Συμβουλή:</b> Όσο πιο συγκεκριμένη η ερώτηση, τόσο καλύτερη η απάντηση!";
-  } else {
-    title = "❓ Usage Instructions:";
-    listItems = [
-      "Ask anything about the Municipality of Corinth",
-      "Use natural language, speak as you would to an employee",
-      "Give feedback with 👍 / 👎 to improve answers",
-      "Enable audio <b> (🔊) </b> for voice responses",
-      "Your conversation is stored locally in your browser"
-    ];
-    tip = "💡 <b>Tip:</b> The more specific your question, the better the answer!";
-  }
-  
-  const listHTML = listItems.map(item => `<li>${item}</li>`).join('');
-
-  addBot(`
-    <div style="background:#c0d7fc;border:1px solid #b8d0ff;border-radius:12px;padding:12px 14px;color:#123d7a;">
-      <div style="font-weight:700;margin-bottom:8px;font-size:13px;">${title}</div>
-      <ul style="margin:0;padding-left:16px;line-height:1.6; font-size:12px;">
-        ${listHTML}
-      </ul>
-      <div style="margin-top:10px;background:#fff8e6;border-radius:10px;padding:8px 10px;color:#856404;font-size:12px;">
-        ${tip}
-      </div>
-    </div>
-  `, true);
-  // καθάρισε τον εξωτερικό bubble ΜΟΝΟ για αυτό το μήνυμα
-const lastBot = document.querySelector('.msg.bot:last-of-type');
-if (lastBot){
-  lastBot.style.background = 'transparent';
-  lastBot.style.border = 'none';
-  lastBot.style.boxShadow = 'none';
-  lastBot.style.padding = '0';
-}
-
-  return;
-}
-
-
-
-
-  // Κανονική λειτουργία για τα υπόλοιπα κουμπιά
-  if (btn.action) return showQuickReplies(btn.action);
-  if (btn.query) {
-    input.value = btn.query;
-    form.dispatchEvent(new Event('submit'));
-  }
-});
-
-        quickRepliesContainer.appendChild(b);
-      });
-      
-      // Προσθέτω το language toggle button στο τέλος (ΔΕΞΙΑ)
-      const langBtn = document.createElement('button');
-      langBtn.type = 'button';
-      langBtn.id = 'langToggleBtn';
-      langBtn.className = 'lang-toggle-btn el-active';
-      langBtn.setAttribute('aria-label', 'Αλλαγή γλώσσας');
-      langBtn.setAttribute('title', 'Κάντε κλικ για αλλαγή γλώσσας');
-      langBtn.innerHTML = currentLang === 'el' ? '🇬🇧' : '🇬🇷';
-      langBtn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        const newLang = currentLang === 'el' ? 'en' : 'el';
-        applyChatLang(newLang);
-        showQuickReplies('main');
-      });
-      quickRepliesContainer.appendChild(langBtn);
+    // Ειδική περίπτωση για label "Πιστοποιητικά"
+    if ((btn.text || '').trim() === 'Πιστοποιητικά') {
+      b.textContent = 'Δείγμα Ερωτήσεων';
     }
 
+    b.setAttribute('style', 'background:#fff; border:2px solid #5b86f5; color:#1e2a3b; border-radius:14px; padding:10px 14px; font-weight:600; box-shadow:0 1px 1px rgba(0,0,0,0.05); max-width:150px; overflow:hidden; text-overflow:ellipsis;');
+
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // --- ΠΕΡΙΠΤΩΣΗ 1: Παραδείγματα Ερωτήσεων ---
+      if (btn.action === 'example_inlines') {
+        let examples, title;
+
+        if (currentLang === 'el') {
+          examples = [
+            "Ποιο είναι το τηλέφωνο του δημαρχείου;",
+            "Πώς εκδίδω Ληξιαρχική Πράξη Γέννησης;",
+            "Πώς γίνεται η μεταδημότευση;",
+            "Πώς εκδίδω Πιστοποιητικό Γέννησης;",
+            "Πώς επικοινωνώ με τη ΔΕΥΑ Κορίνθου;",
+            "Πού γίνεται η δήλωση του γάμου;",
+            "Τι ώρες λειτουργεί το ΚΕΠ;"
+          ];
+          title = "Παραδείγματα ερωτήσεων:";
+        } else {
+          examples = [
+            "What is the mayor's office phone number?",
+            "What is the procedure for changing municipality?",
+            "What is the procedure for issuing a birth certificate?",
+            "What is the ΔΕΥΑ phone number?",
+            "What are the operating hours of the KEP?"
+          ];
+          title = "Example questions:";
+        }
+
+        const examplesList = examples.map(q => `
+          <button type="button"
+            class="quick-reply-btn"
+            style="display:block;width:100%;text-align:left;margin:6px 0;justify-content:flex-start;"
+            data-example="1">
+           ${q}
+          </button>
+        `).join('');
+
+        addBot(`
+          <div style="background:#e6f0ff;border:1px solid #c9ddff;border-radius:10px;padding:12px;color:#123d7a;">
+            <div style="font-weight:700;margin-bottom:8px;">${title}</div>
+            ${examplesList}
+            <div style="margin-top:8px;font-size:12px;color:#466aa3;">
+              ${currentLang === 'el' ? 'Κάντε κλικ σε μια ερώτηση για να τη δοκιμάσετε!' : 'Click on a question to try it!'}
+            </div>
+          </div>
+        `, true);
+        return;
+      }
+
+      // --- ΠΕΡΙΠΤΩΣΗ 2: Ιστορία της Πόλης ---
+      if (btn.action === 'city_history' || btn.text === 'Ιστορία της Πόλης' || btn.text === 'City History') {
+        let items, title, subtitle;
+
+        if (currentLang === 'el') {
+          items = [
+            { label: 'Ιστορία της πόλης', q: 'Ιστορία της πόλης Κορίνθου' },
+            { label: 'Ιστορικά αξιοθέατα', q: 'Ιστορικά αξιοθέατα Κορίνθου' }
+          ];
+          title = "🏛️ Επιλέξτε θέμα:";
+          subtitle = "Κάντε κλικ σε μία επιλογή για να τη δοκιμάσετε.";
+        } else {
+          items = [
+            { label: 'City history', q: 'History of the city of Corinth' },
+            { label: 'Historical landmarks', q: 'Historical landmarks of Corinth' }
+          ];
+          title = "🏛️ Select a topic:";
+          subtitle = "Click on an option to try it.";
+        }
+
+        const list = items.map(it => `
+            <button type="button"
+              class="quick-reply-btn"
+              style="display:block;width:100%;text-align:left;margin:6px 0;justify-content:flex-start;"
+              data-example="1">
+               ${it.q}
+            </button>
+          `).join('');
+
+        addBot(`
+            <div style="background:#e6f0ff;border:1px solid #c9ddff;border-radius:10px;padding:12px;color:#123d7a;">
+              <div style="font-weight:700;margin-bottom:8px;">${title}</div>
+              ${list}
+              <div style="margin-top:8px;font-size:12px;color:#466aa3;">
+                ${subtitle}
+              </div>
+            </div>
+          `, true);
+        return;
+      }
+
+      // --- ΠΕΡΙΠΤΩΣΗ 3: Βοήθεια ---
+      if (btn.action === 'help' || btn.text === 'Βοήθεια' || btn.text === 'Help') {
+        let title, listItems, tip;
+
+        if (currentLang === 'el') {
+          title = "❓ Οδηγίες χρήσης:";
+          listItems = [
+            "Ρωτήστε οτιδήποτε για τον Δήμο Κορινθίων",
+            "Χρησιμοποιήστε φυσική γλώσσα μιλήστε όπως σε έναν υπάλληλο",
+            "Δώστε feedback με 👍 / 👎 για βελτίωση απαντήσεων",
+            "Ενεργοποιήστε τον ήχο <b> (🔊) </b>  για φωνητικές απαντήσεις",
+            "Η συνομιλία αποθηκεύεται τοπικά στον browser σας"
+          ];
+          tip = "💡 <b>Συμβουλή:</b> Όσο πιο συγκεκριμένη η ερώτηση, τόσο καλύτερη η απάντηση!";
+        } else {
+          title = "❓ Usage Instructions:";
+          listItems = [
+            "Ask anything about the Municipality of Corinth",
+            "Use natural language, speak as you would to an employee",
+            "Give feedback with 👍 / 👎 to improve answers",
+            "Enable audio <b> (🔊) </b> for voice responses",
+            "Your conversation is stored locally in your browser"
+          ];
+          tip = "💡 <b>Tip:</b> The more specific your question, the better the answer!";
+        }
+
+        const listHTML = listItems.map(item => `<li>${item}</li>`).join('');
+
+        addBot(`
+            <div style="background:#c0d7fc;border:1px solid #b8d0ff;border-radius:12px;padding:12px 14px;color:#123d7a;">
+              <div style="font-weight:700;margin-bottom:8px;font-size:13px;">${title}</div>
+              <ul style="margin:0;padding-left:16px;line-height:1.6; font-size:12px;">
+                ${listHTML}
+              </ul>
+              <div style="margin-top:10px;background:#fff8e6;border-radius:10px;padding:8px 10px;color:#856404;font-size:12px;">
+                ${tip}
+              </div>
+            </div>
+          `, true);
+
+        // Στυλιστική διόρθωση για το τελευταίο bubble
+        const lastBot = document.querySelector('.msg.bot:last-of-type');
+        if (lastBot) {
+          lastBot.style.background = 'transparent';
+          lastBot.style.border = 'none';
+          lastBot.style.boxShadow = 'none';
+          lastBot.style.padding = '0';
+        }
+        return;
+      } // <--- ΕΔΩ ΗΤΑΝ ΤΟ ΒΑΣΙΚΟ ΛΑΘΟΣ (Η αγκύλη έλειπε ή ήταν σε λάθος θέση)
+
+
+      // --- Κανονική λειτουργία για τα υπόλοιπα κουμπιά ---
+      if (btn.action) return showQuickReplies(btn.action);
+      if (btn.query) {
+        input.value = btn.query;
+        form.dispatchEvent(new Event('submit'));
+      }
+    });
+
+    quickRepliesContainer.appendChild(b);
+  });
+
+  // Προσθέτω το language toggle button στο τέλος (ΔΕΞΙΑ)
+  const langBtn = document.createElement('button');
+  langBtn.type = 'button';
+  langBtn.id = 'langToggleBtn';
+  langBtn.className = 'lang-toggle-btn el-active';
+  langBtn.setAttribute('aria-label', 'Αλλαγή γλώσσας');
+  langBtn.setAttribute('title', 'Κάντε κλικ για αλλαγή γλώσσας');
+  langBtn.innerHTML = currentLang === 'el' ? '🇬🇧' : '🇬🇷';
+  
+  langBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newLang = currentLang === 'el' ? 'en' : 'el';
+    applyChatLang(newLang);
+    showQuickReplies('main');
+  });
+  
+  quickRepliesContainer.appendChild(langBtn);
+}
     let wiggleTimer = null;
     function cueWiggle(){ if (panel.style.display !== 'flex') launcher.classList.add('wiggle'); }
     launcher.addEventListener('animationend', () => launcher.classList.remove('wiggle'));
@@ -1432,118 +1439,114 @@ async function sendFeedback(botResponse, isPositive){
       
       return `${greeting}! Πώς μπορώ να σας βοηθήσω; 😊`;
     }
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
 
-    form.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const text=input.value.trim(); if(!text) return;
+    // 1. Προετοιμασία UI
+    input.disabled = true;
+    form.querySelector('button').disabled = true;
+    addUser(text);
+    input.value = '';
+    conversationHistory.push({ role: 'user', content: text });
 
-      input.disabled=true; form.querySelector('button').disabled=true;
-      addUser(text); input.value='';
+    // 2. Εμφάνιση Typing και δημιουργία Bot Bubble
+    typing(true);
+    const botMsg = document.createElement('div');
+    botMsg.className = 'msg bot';
+    messages.appendChild(botMsg);
+    messages.scrollTop = messages.scrollHeight;
 
-      // Προσθέτω το μήνυμα του χρήστη στο ιστορικό
-      conversationHistory.push({ role: 'user', content: text });
-
-      // Προαιρετική γρήγορη απάντηση σε χαιρετισμό
-      if (isGreeting(text)) {
-        typing(true); 
-        setTimeout(()=>{ 
-          typing(false);
-          const greeting = getGreetingResponse(text);
-          addBot(greeting, true);
-          conversationHistory.push({ role: 'assistant', content: greeting });
-          input.disabled=false; form.querySelector('button').disabled=false; input.focus(); 
-        }, 350);
-        return;
-      }
-
-      typing(true);
-      try{
-        const r=await fetch(`${API_URL}/ask`,{
-          method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-          body:JSON.stringify({ messages: conversationHistory, top_k:10, lang: currentLang })
+    try {
+        const response = await fetch(`${API_URL}/ask`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                messages: conversationHistory, 
+                lang: currentLang 
+            })
         });
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        const data=await r.json(); 
+
+        if (!response.ok) throw new Error('Network error');
+
+        // 3. Διαχείριση Streaming (Ανάγνωση ροής δεδομένων)
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullAnswer = "";
+
         typing(false);
-        
-        if(data.answer){ 
-          // 1. Μετατροπή του κειμένου σε HTML με ενεργούς συνδέσμους
-          const formattedAnswer = linkify(data.answer);
-          // 2. Εμφάνιση στο Chat
-          addBot(formattedAnswer, false);
-          // 3. Ηχητική αναπαραγωγή
-          playResponseAudio(data.answer);
 
-          // Προσθέτω την απάντηση του bot στο ιστορικό
-          conversationHistory.push({ role: 'assistant', content: data.answer });
-          
-          // Logging metrics
-          if (data.quality && data.confidence !== undefined) {
-            console.log(`✨ Response Quality: ${data.quality.toUpperCase()}`);
-            console.log(`📊 Confidence: ${(data.confidence * 100).toFixed(1)}%`);
-          }
-        } else { 
-          addError('Λυπάμαι, δεν μπόρεσα να επεξεργαστώ την ερώτησή σας.'); 
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            fullAnswer += chunk;
+            
+            // Ενημέρωση του bubble σε πραγματικό χρόνο
+            botMsg.innerHTML = linkify(fullAnswer);
+            messages.scrollTop = messages.scrollHeight;
         }
-      } catch(err){
-        typing(false); 
-        console.error(err); 
-        addError('Συγγνώμη, κάτι πήγε στραβά. Παρακαλώ δοκιμάστε ξανά.');
-      } finally {
-        input.disabled=false; form.querySelector('button').disabled=false; input.focus();
-      }
-    });
 
-    async function checkBackendHealth(){
-      try{ 
+        // 4. Ολοκλήρωση (Ήχος & Feedback)
+        conversationHistory.push({ role: 'assistant', content: fullAnswer });
+        playResponseAudio(fullAnswer);
+        addFeedbackButtonsToElement(botMsg, fullAnswer);
+
+    } catch (err) {
+        typing(false);
+        console.error('Streaming Error:', err);
+        botMsg.classList.add('error');
+        botMsg.innerHTML = '⚠️ Συγγνώμη, κάτι πήγε στραβά στη σύνδεση.';
+    } finally {
+        input.disabled = false;
+        form.querySelector('button').disabled = false;
+        input.focus();
+    }
+});
+
+// Βοηθητική συνάρτηση για τα κουμπιά Feedback - ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΕΚΤΟΣ ΤΟΥ SUBMIT
+function addFeedbackButtonsToElement(el, htmlContent) {
+    const feedbackDiv = document.createElement('div'); 
+    feedbackDiv.className = 'msg-feedback';
+    feedbackDiv.innerHTML = `
+        <button class="feedback-btn" onclick="sendFeedback(\`${htmlContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`, true)">👍</button>
+        <button class="feedback-btn" onclick="sendFeedback(\`${htmlContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`, false)">👎</button>
+    `;
+    el.appendChild(feedbackDiv);
+}
+
+// Λοιπές συναρτήσεις συστήματος
+async function checkBackendHealth(){
+    try{ 
         const r=await fetch(`${API_URL}/health`); 
         const d=await r.json(); 
         console.log('✅ Backend:', d); 
-      } catch(e){ 
+    } catch(e){ 
         console.warn('⚠️ Backend not reachable:', e); 
-      }
     }
-    
-    checkBackendHealth();
+}
 
-    // Κλικ πάνω σε κουμπί παραδείγματος μέσα στο chat → στείλε ερώτηση
+checkBackendHealth();
+
 messages.addEventListener('click', (e) => {
-  const btn = e.target.closest('.quick-reply-btn');
-  if (!btn || !btn.closest('.msg.bot')) return;
-
-  e.preventDefault();
-  e.stopPropagation();
-
-  const q = btn.textContent.replace(/^💬\s*/,'').trim();
-  if (!q || input.value === q) return;   // ✅ αποτρέπει διπλή αποστολή
-
-  input.value = q;
-  // Καθυστέρηση μικρή για να μην στείλει δύο φορές
-  setTimeout(() => {
-    form.dispatchEvent(new Event('submit', { bubbles: false }));
-  }, 50);
+    const btn = e.target.closest('.quick-reply-btn');
+    if (!btn || !btn.closest('.msg.bot')) return;
+    const q = btn.textContent.replace(/^💬\s*/,'').trim();
+    input.value = q;
+    setTimeout(() => {
+        form.dispatchEvent(new Event('submit', { bubbles: false }));
+    }, 50);
 });
 
 document.addEventListener('click', (e) => {
-  const title = e.target.closest('.card-header');
-  if (!title) return;
-
-  const content = title.parentElement.querySelector('.scenario-content');
-  if (!content) return;
-
-  content.classList.toggle('open');
-  e.stopPropagation();
+    const title = e.target.closest('.card-header');
+    if (!title) return;
+    const content = title.parentElement.querySelector('.scenario-content');
+    if (content) content.classList.toggle('open');
 });
-
-
-function toggleScenario() {
-  const content = document.getElementById('scenarioBody');
-  if (content.style.display === "block") {
-    content.style.display = "none";
-  } else {
-    content.style.display = "block";
-  }
-}
+    
 
   </script>
 </body>
