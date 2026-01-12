@@ -811,17 +811,13 @@ async def get_questionnaire():
 @limiter.limit("30/minute")
 async def ask(request: Request, body: AskBody):
     # 1. Αρχικοποίηση
-    conn = None
-    current_lang = body.lang or detect_user_lang(body.messages[-1].content if body.messages else "")
+    current_lang = body.lang or "el"
     question = (body.messages[-1].content if body.messages else "").strip()
 
     if not question:
-        return {
-            "answer": "❌ No question received" if current_lang == 'en' else "❌ Δεν έλαβα ερώτηση",
-            "quality": "error"
-        }
+        return {"answer": "Δεν έλαβα ερώτηση", "quality": "error"}
 
-    # 2. ΣΥΛΛΟΓΗ ΠΛΗΡΟΦΟΡΙΩΝ ΑΠΟ CSV
+    # 2. Προετοιμασία Context από CSV (γρήγορο, εκτός generator)
     csv_context = ""
     query_lower = question.lower()
     for row in knowledge_base:
@@ -832,43 +828,48 @@ async def ask(request: Request, body: AskBody):
             if csv_q in query_lower or query_lower in csv_q:
                 csv_context += f"\nΣχετική πληροφορία από CSV: {csv_a}\n"
 
-    try:
-        # 3. ΣΥΝΔΕΣΗ ΚΑΙ SEARCH ΣΤΗ ΒΑΣΗ
-        conn = get_db_conn() 
-        cursor = conn.cursor() # Δημιουργούμε τον cursor για να μη βγάζει σφάλμα
-        
-        # Παίρνουμε context από τη βάση (Semantic Search)
-        db_context_docs = retrieve_context(cursor, question, top_k=body.top_k)
-        cursor.close() # Κλείνουμε τον cursor αφού τελειώσουμε
-        
-        # 4. ΕΝΩΣΗ ΟΛΩΝ ΤΩΝ ΓΝΩΣΕΩΝ
-        db_context_text = ""
-        if db_context_docs:
+    async def event_generator():
+        conn = get_db_conn()
+        try:
+            cursor = conn.cursor()
+            
+            # 3. Λήψη Context από τη Βάση (Retrieve)
+            db_context_docs = retrieve_context(cursor, question, top_k=5)
+            db_context_text = ""
             for doc in db_context_docs:
-                if isinstance(doc, dict):
-                    q = doc.get('question', '')
-                    a = doc.get('answer', '')
-                    db_context_text += f"\nΠληροφορία: {q} - {a}\n"
-                else:
-                    db_context_text += f"\nΠληροφορία: {str(doc)}\n"
-        
-        all_context = csv_context + "\n" + db_context_text
-        
-        # 5. ΤΟ LLM ΦΤΙΑΧΝΕΙ ΤΗΝ ΕΞΥΠΝΗ ΑΠΑΝΤΗΣΗ
-        answer, metadata = await generate_answer_with_rag(question, all_context, current_lang)
-        
-        return {
-            "answer": answer,
-            "quality": "generated",
-            "source": "hybrid_rag"
-        }
+                q = doc.get('question', '')
+                a = doc.get('answer', '')
+                db_context_text += f"\nΠληροφορία: {q} - {a}\n"
+            cursor.close()
 
-    except Exception as e:
-        log.error(f"❌ Error in /ask: {e}")
-        return {"answer": "Λυπάμαι, παρουσιάστηκε ένα πρόβλημα.", "quality": "error"}
-    finally:
-        if conn:
-            return_db_conn(conn)
+            all_context = csv_context + "\n" + db_context_text
+
+            # 4. Κλήση OpenAI με Streaming
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": f"Είσαι η Εφύρα, η ψηφιακή βοηθός του Δήμου Κορινθίων. Απάντησε στη γλώσσα: {current_lang}. Χρησιμοποίησε το παρακάτω CONTEXT για να απαντήσεις."},
+                    {"role": "system", "content": f"CONTEXT:\n{all_context}"},
+                    {"role": "user", "content": question}
+                ],
+                temperature=0.7,
+                stream=True  # Ενεργοποίηση ροής
+            )
+
+            # 5. Yielding chunks
+            for chunk in response:
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
+
+        except Exception as e:
+            log.error(f"❌ Streaming Error: {e}")
+            yield "Λυπάμαι, παρουσιάστηκε ένα πρόβλημα στη σύνδεση."
+        finally:
+            if conn:
+                return_db_conn(conn)
+
+    return StreamingResponse(event_generator(), media_type="text/plain")
     # ----------------------------------------------
      
 
