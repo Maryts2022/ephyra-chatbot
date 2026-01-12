@@ -603,36 +603,33 @@ def keyword_search(cursor, question: str, top_k: int = 3) -> List[Dict]:
         log.error(f"❌ Keyword search error: {e}")
         return []
 
-def retrieve_context(cursor, question: str, top_k: int = 10) -> List[Dict]:
+def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
     """
-    RAG Step 1: RETRIEVE
-    Combines semantic + keyword search, ranks and deduplicates results.
-    Returns MORE documents so Gemini can find the best match regardless of wording.
+    RAG Step 1: Optimized RETRIEVE
+    Μειώνουμε το top_k για ταχύτητα. Το GPT-4o-mini αποδίδει καλύτερα 
+    με λιγότερο και πιο σχετικό περιεχόμενο.
     """
-   # 1. Εκτέλεση και των δύο αναζητήσεων (Semantic & Keyword)
-    # Αυξάνουμε το top_k για να έχουμε μεγαλύτερη πιθανότητα να βρούμε την πληροφορία
-    semantic_results = semantic_search(cursor, question, top_k=8)
-    top_sim = semantic_results[0]['similarity'] if semantic_results else 0
+    # 1. Semantic Search (top_k=5 αντί για 8)
+    semantic_results = semantic_search(cursor, question, top_k=5)
     
-    keyword_results = keyword_search(cursor, question, top_k=4)
+    # 2. Keyword Search (top_k=2 αντί για 4)
+    keyword_results = keyword_search(cursor, question, top_k=2)
 
-    # 2. ΥΒΡΙΔΙΚΟΣ ΣΥΝΔΥΑΣΜΟΣ (Hybrid Search) - ΧΩΡΙΣ ΠΕΡΙΟΡΙΣΜΟΥΣ
-    # Χρησιμοποιούμε dictionary για να ενώσουμε τα αποτελέσματα χωρίς διπλότυπα
     all_results = {}
     
-    # Πρώτα προσθέτουμε τα αποτελέσματα από την αναζήτηση λέξεων-κλειδιών
+    # Προσθήκη keyword results
     for doc in keyword_results:
         all_results[doc['id']] = doc
     
-    # Μετά προσθέτουμε τα αποτελέσματα από τη σημασιολογική αναζήτηση
+    # Προσθήκη semantic results & Deduplication
     for doc in semantic_results:
         if doc['id'] not in all_results:
             all_results[doc['id']] = doc
         else:
-            # Αν ένα έγγραφο βρέθηκε και από τους δύο τρόπους, κρατάμε το υψηλότερο similarity
-            current_sim = doc.get('similarity', 0)
-            existing_sim = all_results[doc['id']].get('similarity', 0)
-            all_results[doc['id']]['similarity'] = max(current_sim, existing_sim)
+            all_results[doc['id']]['similarity'] = max(doc.get('similarity', 0), all_results[doc['id']].get('similarity', 0))
+    
+    # Επιστρέφουμε μόνο τα 5 κορυφαία σε βαθμολογία
+    return sorted(all_results.values(), key=lambda x: x.get('similarity', 0), reverse=True)[:5]
     
     # Καταγραφή πληροφοριών στο Log για έλεγχο στο τερματικό σου
     log.info(f"📂 Hybrid Search: Top Semantic Sim: {top_sim:.3f}")
