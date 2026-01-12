@@ -348,6 +348,7 @@
   }
   // --- 4. RENDER SURVEY TABLE (με σελίδες) ---
   // --- 4. RENDER SURVEY TABLE (ΔΙΟΡΘΩΜΕΝΟ ΜΕ ΦΥΛΟ/ΗΛΙΚΙΑ/Q16) ---
+ 
   function renderSurveyTable() {
     const tbody = document.getElementById('surveyTableBody');
     const start = (currentSurveyPage - 1) * ROWS_PER_PAGE;
@@ -358,7 +359,6 @@
     document.getElementById('surveyPageInfo').innerText = `Σελίδα ${currentSurveyPage} από ${totalPages} (Σύνολο: ${allSurveyData.length})`;
 
     if(pageData.length === 0) {
-        // Αυξάνουμε το colspan σε 22 γιατί προσθέσαμε νέα στήλη
         tbody.innerHTML = '<tr><td colspan="22" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
         return;
     }
@@ -366,9 +366,9 @@
     tbody.innerHTML = pageData.map(item => `
         <tr>
           <td>#${item.id}</td>
-          <td style="font-size:11px">${item.timestamp}</td>
+          <td style="font-size:11px">${item.timestamp ? item.timestamp.replace('T', ' ').split('.')[0] : '-'}</td>
           
-          <td style="font-weight:500; color:#ffd700;">${item.scenarios || '-'}</td>
+          <td style="font-weight:500; color:#ffd700;">${item.scenarios_tested || item.scenarios || '-'}</td>
           
           <td style="font-size:12px">${item.gender || '-'}</td>
           <td style="font-size:12px">${item.age || '-'}</td>
