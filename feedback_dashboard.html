@@ -248,6 +248,19 @@
   let feedbackChartInstance = null;
   let languageChartInstance = null;
 
+  // --- ΝΕΟ: ΣΥΝΑΡΤΗΣΗ ΜΕΤΑΤΡΟΠΗΣ ΩΡΑΣ ΣΕ ΕΛΛΗΝΙΚΗ ---
+  function formatToGreekTime(dateString) {
+      if (!dateString) return '-';
+      // Το "Z" στο τέλος λέει στον Browser ότι η ώρα που έρχεται είναι UTC (Παγκόσμια)
+      // Οπότε ο Browser την μετατρέπει αυτόματα σε ώρα Ελλάδας.
+      const date = new Date(dateString.replace(' ', 'T') + 'Z'); 
+      return date.toLocaleString('el-GR', { 
+          timeZone: 'Europe/Athens',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+  }
+
   // --- 1. ΦΟΡΤΩΣΗ DEΔΟΜΕΝΩΝ (CHAT & STATS) ---
   async function loadDashboardStats() {
     try {
@@ -307,8 +320,7 @@
     }
   }
 
-  // --- 3. RENDER CHAT TABLE (με σελίδες) ---
-  // --- 3. RENDER CHAT TABLE (ΔΙΟΡΘΩΜΕΝΟ) ---
+  // --- 3. RENDER CHAT TABLE (ΔΙΟΡΘΩΜΕΝΟ ME ΕΛΛΗΝΙΚΗ ΩΡΑ) ---
   function renderChatTable() {
       const tbody = document.getElementById('chatTableBody');
       const start = (currentChatPage - 1) * ROWS_PER_PAGE;
@@ -326,8 +338,9 @@
       tbody.innerHTML = pageData.map(item => `
         <tr>
           <td>#${item.id}</td>
+          
           <td style="font-size:11px; white-space:nowrap;">
-            ${item.timestamp ? item.timestamp.replace('T', ' ').split('.')[0] : '-'}
+            ${formatToGreekTime(item.timestamp)}
           </td>
           
           <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;">
@@ -346,9 +359,8 @@
         </tr>
       `).join('');
   }
-  // --- 4. RENDER SURVEY TABLE (με σελίδες) ---
-  // --- 4. RENDER SURVEY TABLE (ΔΙΟΡΘΩΜΕΝΟ ΜΕ ΦΥΛΟ/ΗΛΙΚΙΑ/Q16) ---
- 
+
+  // --- 4. RENDER SURVEY TABLE (ΔΙΟΡΘΩΜΕΝΟ ME ΕΛΛΗΝΙΚΗ ΩΡΑ) ---
   function renderSurveyTable() {
     const tbody = document.getElementById('surveyTableBody');
     const start = (currentSurveyPage - 1) * ROWS_PER_PAGE;
@@ -366,7 +378,8 @@
     tbody.innerHTML = pageData.map(item => `
         <tr>
           <td>#${item.id}</td>
-          <td style="font-size:11px">${item.timestamp ? item.timestamp.replace('T', ' ').split('.')[0] : '-'}</td>
+          
+          <td style="font-size:11px; white-space:nowrap;">${formatToGreekTime(item.timestamp)}</td>
           
           <td style="font-weight:500; color:#ffd700;">${item.scenarios_tested || item.scenarios || '-'}</td>
           
