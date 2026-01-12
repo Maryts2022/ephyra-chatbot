@@ -815,15 +815,28 @@ async def ask(request: Request, body: AskBody):
     if not question:
         return {"answer": "Δεν έλαβα ερώτηση", "quality": "error"}
 
-    # 2. Προετοιμασία Context από CSV (γρήγορο, εκτός generator)
+    # 2. Προετοιμασία Context από CSV (με ΕΞΥΠΝΗ αναζήτηση)
     csv_context = ""
-    query_lower = question.lower()
+    
+    # Συνάρτηση καθαρισμού (αφαιρεί σημεία στίξης και κάνει μικρά γράμματα)
+    def clean_text(t):
+        if not t: return ""
+        # Μετατροπή σε πεζά και αφαίρεση σημείων στίξης
+        return t.lower().translate(str.maketrans('', '', string.punctuation)).strip()
+
+    clean_user_q = clean_text(question)
+
+    # Σάρωση του CSV για γρήγορες απαντήσεις
     for row in knowledge_base:
         values = list(row.values())
         if len(values) >= 2:
-            csv_q = str(values[0]).lower()
+            csv_q_raw = str(values[0])
             csv_a = values[1]
-            if csv_q in query_lower or query_lower in csv_q:
+            
+            clean_csv_q = clean_text(csv_q_raw)
+            
+            # Έλεγχος αν η ερώτηση ταιριάζει (αμφίδρομα) χωρίς σύμβολα
+            if clean_csv_q and (clean_csv_q in clean_user_q or clean_user_q in clean_csv_q):
                 csv_context += f"\nΣχετική πληροφορία από CSV: {csv_a}\n"
 
     async def event_generator():
@@ -832,6 +845,7 @@ async def ask(request: Request, body: AskBody):
             cursor = conn.cursor()
             
             # 3. Λήψη Context από τη Βάση (Retrieve)
+            # Αν βρήκαμε ήδη πολλά στο CSV, ψάχνουμε λιγότερα στη βάση για ταχύτητα
             db_context_docs = retrieve_context(cursor, question, top_k=5)
             db_context_text = ""
             for doc in db_context_docs:
@@ -851,18 +865,18 @@ async def ask(request: Request, body: AskBody):
                     {"role": "user", "content": question}
                 ],
                 temperature=0.7,
-                stream=True  # Ενεργοποίηση ροής
+                stream=True
             )
 
-            # 5. Yielding chunks
+            # 5. Yielding chunks (Στέλνουμε την απάντηση κομμάτι-κομμάτι)
             for chunk in response:
-                content = chunk.choices[0].delta.content
-                if content:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
                     yield content
 
         except Exception as e:
             log.error(f"❌ Streaming Error: {e}")
-            yield "Λυπάμαι, παρουσιάστηκε ένα πρόβλημα στη σύνδεση."
+            yield " Λυπάμαι, παρουσιάστηκε ένα πρόβλημα στη σύνδεση."
         finally:
             if conn:
                 return_db_conn(conn)
