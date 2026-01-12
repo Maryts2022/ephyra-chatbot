@@ -581,6 +581,28 @@ async def tts_play(request: Request, text: str = "", body: TTSBody = None):
         return StreamingResponse(io.BytesIO(data), media_type="audio/mpeg")
     except: return HTTPException(500)
 
+# 👇 ΕΔΩ ΜΠΑΙΝΕΙ Ο ΝΕΟΣ ΚΩΔΙΚΑΣ 👇
+@app.post("/feedback/clear")
+async def clear_all_data():
+    """Wipes BOTH Feedback and Survey tables for a clean slate."""
+    conn = get_db_conn()
+    try:
+        cur = conn.cursor()
+        # 1. Διαγραφή Chat Feedback
+        cur.execute("TRUNCATE TABLE chatbot_feedback;")
+        # 2. Διαγραφή Ερωτηματολογίων (Survey)
+        cur.execute("TRUNCATE TABLE survey_final;")
+        conn.commit()
+        cur.close()
+        return {"status": "success", "message": "All data wiped successfully"}
+    except Exception as e:
+        log.error(f"Clear Error: {e}")
+        return {"error": str(e)}
+    finally:
+        return_db_conn(conn)
+# 👆 ΤΕΛΟΣ ΝΕΟΥ ΚΩΔΙΚΑ 👆 
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
