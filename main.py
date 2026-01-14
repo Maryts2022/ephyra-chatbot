@@ -31,7 +31,7 @@ from slowapi.errors import RateLimitExceeded
 from elevenlabs.client import ElevenLabs
 from sentence_transformers import SentenceTransformer
 from openai import OpenAI
-
+from langdetect import detect, LangDetectException 
 # ================== 1. Configuration & Setup ==================
 
 # Load Environment Variables
@@ -208,116 +208,88 @@ def get_embedder():
         embedder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
     return embedder
 
-def get_direct_answer(question: str) -> Optional[Dict]:
-    """Returns hardcoded answers for critical questions (Cheat Sheet)."""
-    text_lower = question.lower().strip()
-    
-    # 1. SOCIAL MEDIA (Πρώτο για να μην μπερδεύεται με τον Δήμαρχο!)
-    if any(kw in text_lower for kw in ['social', 'facebook', 'instagram', 'youtube', 'linkedin', 'σόσιαλ']):
-        return {
-            "answer": """Ακολουθήστε τον Δήμο Κορινθίων στα Social Media για άμεση ενημέρωση:
+# --- MAIN CHAT ENDPOINT ---
+@app.post("/ask")
+@limiter.limit("30/minute")
+async def ask(request: Request, body: AskBody):
+    # 1. Βασική γλώσσα από το κουμπί (ως default)
+    target_lang = body.lang or "el"
+    question = (body.messages[-1].content if body.messages else "").strip()
+    if not question: return {"answer": "..."}
 
-👍 **Facebook:** [Δήμος Κορινθίων](https://www.facebook.com/dimoskorinthion)
-📸 **Instagram:** [@dimos.korinthion](https://www.instagram.com/dimos.korinthion)
-🎥 **YouTube:** [Δήμος Κορινθίων](https://www.youtube.com/@dimoskorinthion)
-
-Εκεί θα βρείτε όλα τα νέα, τις εκδηλώσεις και τις ανακοινώσεις του Δήμου!""",
-            "quality": "direct_match"
-        }
-
-    # 2. ΤΟΥΡΙΣΜΟΣ - ΑΞΙΟΘΕΑΤΑ
-    if any(kw in text_lower for kw in ['επισκεφτώ', 'επισκεφθώ', 'αξιοθέατα', 'μουσεία', 'τουρισμ', 'βόλτα', 'μέρη', 'προορισμ']):
-        return {
-            "answer": """Ο Δήμος Κορινθίων είναι γεμάτος ιστορία και ομορφιά! Προτείνουμε να επισκεφθείτε:
-
-1. **Αρχαία Κόρινθος & Αρχαιολογικό Μουσείο**: Ταξίδι στην ιστορία της πόλης.
-2. **Ακροκόρινθος**: Το επιβλητικό κάστρο με τη μοναδική θέα.
-3. **Διώρυγα της Κορίνθου (Ισθμός)**: Παγκόσμιο αξιοθέατο.
-4. **Παραλία Καλάμια & Κεχριές**: Για βόλτα και χαλάρωση δίπλα στο κύμα.
-5. **Λαογραφικό Μουσείο**: Για να γνωρίσετε την παράδοση του τόπου.
-
-Χρειάζεστε οδηγίες για κάποιο από αυτά;""",
-            "quality": "direct_match"
-        }
-
-    # 3. ΑΝΤΙΔΗΜΑΡΧΟΙ
-    if 'αντιδήμαρχ' in text_lower or 'αντιδημαρχ' in text_lower:
-        # Ειδικά για Καθαριότητα
-        if 'καθαριότ' in text_lower or 'καθαριοτ' in text_lower:
-             return {
-                "answer": "Αντιδήμαρχος Καθαριότητας είναι ο κ. Δημήτριος Μανωλάκης. Τηλέφωνο επικοινωνίας: 2741361000",
-                "quality": "direct_match"
-            }
-        
-        # Γενικά για Αντιδημάρχους
-        return {
-            "answer": """Οι Αντιδήμαρχοι του Δήμου Κορινθίων είναι:
-
-1. **Γεώργιος Πούρος** (Διοικητικών Υπηρεσιών)
-2. **Βασίλειος Πανταζής** (Πολεοδομίας)
-3. **Δημήτριος Μανωλάκης** (Καθαριότητας)
-4. **Ευάγγελος Παπαϊωάννου** (Παιδείας & Τουρισμού)
-5. **Ανδρέας Ζώγκος** (Τεχνικών Υπηρεσιών)
-6. **Αναστάσιος Ταγαράς** (Πολιτισμού)
-
-Για περισσότερες πληροφορίες καλέστε στο 2741361000.""",
-            "quality": "direct_match"
-        }
-
-    # 4. ΚΕΠ
-    if any(kw in text_lower for kw in ['κεπ', 'κέντρο εξυπηρέτησης πολιτών']):
-        return {
-            "answer": """ΚΕΠ Κορίνθου - Στοιχεία Επικοινωνίας:
-
-📍 Διεύθυνση: Κωστή Παλαμά 53, 20131 Κόρινθος
-📞 Τηλέφωνο: 2741363555
-📧 Email: n.korinthias@kep.gov.gr
-🕒 Ωράριο: Δευτέρα - Παρασκευή 8:00-15:00""",
-            "quality": "direct_match"
-        }
-    
-    # 5. ΔΕΥΑ
-    if any(kw in text_lower for kw in ['δευα', 'δ.ε.υ.α', 'νερό']):
-        return {
-            "answer": """ΔΕΥΑ Κορίνθου:
-📞 Τηλέφωνο Κέντρο: 2741024444
-📞 Βλάβες (24ωρο): 6936776041
-📧 Email: info@deyakor.gr""",
-            "quality": "direct_match"
-        }
-    
-    # 6. ΔΗΜΑΡΧΟΣ (Το βάζουμε τελευταίο για να μην μπερδεύει τα άλλα)
-    if any(kw in text_lower for kw in ['δήμαρχ', 'δημαρχ', 'mayor']):
-        return {
-            "answer": """Γραφείο Δημάρχου Κορινθίων:
-
-Δήμαρχος: **Νίκος Σταυρέλης**
-📞 Τηλέφωνο: 27413-61001, 27413-61041
-📧 Email: grafeiodimarxou@korinthos.gr
-📍 Διεύθυνση: Κολιάτσου 32, 201 31 Κόρινθος""",
-            "quality": "direct_match"
-        }
-
-    return None
-
-def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
-    """Retrieves relevant context from DB using Semantic Search."""
+    # 2. ΑΥΤΟΜΑΤΗ ΑΝΙΧΝΕΥΣΗ ΓΛΩΣΣΑΣ (ΝΕΟ!)
+    # Αν ο χρήστης γράψει "Hello", το κάνουμε "en" αυτόματα, αγνοώντας το κουμπί.
     try:
-        q_embedding = get_embedder().encode(question).tolist()
-        cursor.execute("""
-            SELECT id, question, answer, 1 - (embedding_384 <=> %s::vector) as similarity
-            FROM public.kb_items_raw 
-            ORDER BY embedding_384 <-> %s::vector
-            LIMIT %s
-        """, (q_embedding, q_embedding, top_k))
-        
-        results = []
-        for r in cursor.fetchall():
-            results.append({"question": r[1], "answer": r[2], "similarity": float(r[3])})
-        return results
-    except Exception as e:
-        log.error(f"Search Error: {e}")
-        return []
+        if len(question) > 3: # Έλεγχος μόνο αν έχει αρκετά γράμματα
+            detected = detect(question)
+            if detected == 'en': target_lang = 'en'
+            elif detected == 'el': target_lang = 'el'
+    except:
+        pass # Αν αποτύχει η ανίχνευση, κρατάμε το default
+
+    # 3. ΕΛΕΓΧΟΣ ΓΙΑ ΑΜΕΣΗ ΑΠΑΝΤΗΣΗ (Cheat Sheet)
+    direct_resp = get_direct_answer(question)
+    if direct_resp:
+        async def direct_stream():
+            yield direct_resp["answer"]
+        return StreamingResponse(direct_stream(), media_type="text/plain")
+
+    # 4. RAG Λογική (CSV + DB)
+    csv_context = ""
+    def clean_text(t):
+        if not t: return ""
+        return t.lower().translate(str.maketrans('', '', string.punctuation)).strip()
+
+    clean_user_q = clean_text(question)
+    
+    # Γρήγορο ψάξιμο στη μνήμη (CSV)
+    for row in knowledge_base:
+        if len(row) >= 2:
+            q_raw, a_val = list(row.values())[0], list(row.values())[1]
+            if clean_text(str(q_raw)) in clean_user_q:
+                csv_context += f"\nCSV Info: {a_val}\n"
+
+    # 5. Βαθύ ψάξιμο στη Βάση & Γέννηση απάντησης
+    async def event_generator():
+        conn = get_db_conn()
+        try:
+            cursor = conn.cursor()
+            db_docs = retrieve_context(cursor, question, top_k=4)
+            db_text = "\n".join([f"Info: {d['question']} - {d['answer']}" for d in db_docs])
+            cursor.close()
+
+            all_context = csv_context + "\n" + db_text
+
+            # System Prompt - Δυναμική Γλώσσα
+            # Εδώ λέμε στο GPT να απαντήσει στη γλώσσα που ανιχνεύσαμε (target_lang)
+            sys_msg = (
+                f"Είσαι η Εφύρα, ψηφιακή βοηθός του Δήμου Κορινθίων. "
+                f"Απάντησε ΑΥΣΤΗΡΑ στη γλώσσα: {target_lang} (Greek ή English). "
+                f"Χρησιμοποίησε τις πληροφορίες από το CONTEXT. "
+                f"Αν η ερώτηση είναι στα Αγγλικά, μετάφρασε την απάντηση στα Αγγλικά."
+            )
+
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": sys_msg},
+                    {"role": "system", "content": f"CONTEXT:\n{all_context}"},
+                    {"role": "user", "content": question}
+                ],
+                temperature=0.7,
+                stream=True
+            )
+            for chunk in response:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+
+        except Exception as e:
+            log.error(f"Stream Error: {e}")
+            yield "Συγγνώμη, υπήρξε πρόβλημα στη σύνδεση."
+        finally:
+            return_db_conn(conn)
+
+    return StreamingResponse(event_generator(), media_type="text/plain")
 
 # ================== 6. FastAPI App & Middleware ==================
 
@@ -485,6 +457,7 @@ async def record_feedback(request: Request):
         return {"error": str(e)}
 
 @app.get("/feedback/stats")
+@app.get("/feedback/stats")
 async def get_feedback_stats(days: int = 30):
     """Provides statistics for the Feedback Dashboard."""
     conn = get_db_conn()
@@ -497,7 +470,8 @@ async def get_feedback_stats(days: int = 30):
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN is_positive THEN 1 ELSE 0 END) as positive,
-                SUM(CASE WHEN is_positive THEN 0 ELSE 1 END) as negative
+                SUM(CASE WHEN is_positive THEN 0 ELSE 1 END) as negative,
+                COUNT(DISTINCT ip_address) as unique_users
             FROM chatbot_feedback
             WHERE timestamp >= %s
         """, (since_date,))
@@ -505,6 +479,7 @@ async def get_feedback_stats(days: int = 30):
         total = result[0] or 0
         positive = result[1] or 0
         negative = result[2] or 0
+        unique_users = result[3] or 0
         satisfaction_rate = round((positive / total * 100)) if total > 0 else 0
 
         # 2. Daily Data
@@ -525,7 +500,7 @@ async def get_feedback_stats(days: int = 30):
 
         # 3. Recent Feedback
         cur.execute("""
-            SELECT user_question, bot_response, is_positive, timestamp
+            SELECT id, user_question, bot_response, is_positive, timestamp
             FROM chatbot_feedback
             WHERE timestamp >= %s
             ORDER BY timestamp DESC LIMIT 20
@@ -533,19 +508,49 @@ async def get_feedback_stats(days: int = 30):
         recent = []
         for row in cur.fetchall():
             recent.append({
-                "user_question": row[0],
-                "bot_response": row[1],
-                "is_positive": row[2],
-                "timestamp": str(row[3])
+                "id": row[0],
+                "user_question": row[1],
+                "bot_response": row[2],
+                "is_positive": row[3],
+                "timestamp": str(row[4])
             })
+            
+        # 4. Top Questions (ΝΕΟ)
+        cur.execute("""
+             SELECT user_question, COUNT(*) as c 
+             FROM chatbot_feedback 
+             WHERE timestamp >= %s 
+             GROUP BY user_question 
+             ORDER BY c DESC LIMIT 5
+        """, (since_date,))
+        top_questions = [{"question": r[0], "count": r[1]} for r in cur.fetchall()]
+
+        # 5. Language Distribution (Η ΔΙΟΡΘΩΣΗ ΓΙΑ ΤΗΝ ΠΙΤΑ 🥧)
+        # Διαβάζουμε όλες τις ερωτήσεις και μετράμε αν έχουν Ελληνικά γράμματα
+        cur.execute("SELECT user_question FROM chatbot_feedback WHERE timestamp >= %s", (since_date,))
+        rows = cur.fetchall()
+        el_count = 0
+        en_count = 0
+        
+        for r in rows:
+            text = (r[0] or "").strip()
+            if not text: continue
+            # Έλεγχος: Αν περιέχει έστω και ένα ελληνικό χαρακτήρα, το χρεώνουμε στα Ελληνικά
+            if any('\u0370' <= c <= '\u03ff' or '\u1f00' <= c <= '\u1fff' for c in text):
+                el_count += 1
+            else:
+                en_count += 1
 
         return {
             "total_feedback": total,
             "positive": positive,
             "negative": negative,
             "satisfaction_rate": satisfaction_rate,
+            "unique_users": unique_users,
             "daily_data": daily_data,
-            "recent_feedback": recent
+            "recent_feedback": recent,
+            "top_questions": top_questions,
+            "language_distribution": {"el": el_count, "en": en_count} # <-- Αυτό έλειπε!
         }
     except Exception as e:
         log.error(f"Stats Error: {e}")
