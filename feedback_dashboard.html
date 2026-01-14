@@ -6,7 +6,7 @@
   <title>📊 Feedback Dashboard - Εφύρα Chatbot</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
   <style>
-    /* --- ΣΤΥΛ (Διατηρούμε το Dark Theme που σου αρέσει) --- */
+    /* --- ΣΤΥΛ (Dark Theme Optimized) --- */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
@@ -47,7 +47,7 @@
     .btn-danger { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444; }
     .btn-danger:hover { background: rgba(239,68,68,0.3); }
 
-    /* Stats Grid (Τα πάνω κουτάκια) */
+    /* Stats Grid */
     .stats-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;
     }
@@ -60,20 +60,40 @@
     .stat-val { font-size: 28px; font-weight: 700; margin-bottom: 5px; }
     .stat-sub { font-size: 11px; color: #64748b; }
 
-    /* Charts Row */
+    /* Charts Row - FIXED LAYOUT */
     .charts-row {
-      display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px;
+      display: grid; 
+      grid-template-columns: 2fr 1fr; 
+      gap: 20px; 
+      margin-bottom: 30px;
+      height: 400px; /* Σταθερό ύψος για όλη τη γραμμή */
     }
-    @media(max-width: 1000px) { .charts-row { grid-template-columns: 1fr; } }
+    @media(max-width: 1000px) { 
+        .charts-row { grid-template-columns: 1fr; height: auto; } 
+    }
     
     .chart-container {
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 16px; padding: 20px; height: 350px;
+      border-radius: 16px; 
+      padding: 20px; 
+      display: flex;
+      flex-direction: column;
+      height: 100%; /* Γεμίζει το grid cell */
+      overflow: hidden; /* Κόβει ό,τι περισσεύει */
     }
-    .chart-container h2 { font-size: 18px; margin-bottom: 15px; color: #e2e8f0; }
+    
+    .chart-container h2 { font-size: 18px; margin-bottom: 15px; color: #e2e8f0; flex-shrink: 0; }
+    
+    /* Το κλουβί του καμβά */
+    .canvas-wrapper {
+        position: relative;
+        flex-grow: 1;
+        width: 100%;
+        min-height: 0; /* Σημαντικό για flexbox scrolling */
+    }
 
-    /* Insights Row (Top Questions etc) */
+    /* Insights Row */
     .insights-row {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;
     }
@@ -85,7 +105,8 @@
     .insight-card h3 { font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
     .insight-list { list-style: none; }
     .insight-list li { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; display: flex; justify-content: space-between; }
-    
+    .insight-list li span { max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
     /* Tables */
     .section-title { font-size: 20px; margin: 40px 0 15px; border-left: 4px solid #3b82f6; padding-left: 15px; }
     .table-container { 
@@ -103,7 +124,7 @@
     .badge-pos { background: rgba(16, 185, 129, 0.2); color: #10b981; }
     .badge-neg { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
 
-    /* Pagination Controls */
+    /* Pagination */
     .pagination { display: flex; justify-content: flex-end; align-items: center; padding: 15px; gap: 15px; background: rgba(0,0,0,0.2); }
     .page-info { font-size: 14px; color: #94a3b8; }
     .page-btn { padding: 6px 12px; background: #334155; border: none; color: white; border-radius: 6px; cursor: pointer; }
@@ -155,11 +176,15 @@
   <div class="charts-row">
     <div class="chart-container">
       <h2>📈 Τάση Feedback (30 Ημέρες)</h2>
-      <canvas id="feedbackChart"></canvas>
+      <div class="canvas-wrapper">
+          <canvas id="feedbackChart"></canvas>
+      </div>
     </div>
     <div class="chart-container">
       <h2>🗣️ Κατανομή Γλώσσας</h2>
-      <canvas id="languageChart"></canvas>
+      <div class="canvas-wrapper">
+          <canvas id="languageChart"></canvas>
+      </div>
     </div>
   </div>
 
@@ -210,12 +235,10 @@
             <th>Σενάρια</th>
             <th>Φύλο</th>
             <th>Ηλικία</th>
-
             <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th>
             <th>Q6</th><th>Q7</th><th>Q8</th><th>Q9</th><th>Q10</th>
             <th>Q11</th><th>Q12</th><th>Q13</th><th>Q14</th><th>Q15</th>
             <th>Q16</th>
-            
           </tr>
         </thead>
         <tbody id="surveyTableBody">
@@ -238,21 +261,15 @@
   const API_URL = ""; 
   const ROWS_PER_PAGE = 10;
   
-  // Μεταβλητές για τα δεδομένα και τα γραφήματα
   let allChatData = [];
   let currentChatPage = 1;
-
   let allSurveyData = [];
   let currentSurveyPage = 1;
-
   let feedbackChartInstance = null;
   let languageChartInstance = null;
 
-  // --- ΝΕΟ: ΣΥΝΑΡΤΗΣΗ ΜΕΤΑΤΡΟΠΗΣ ΩΡΑΣ ΣΕ ΕΛΛΗΝΙΚΗ ---
   function formatToGreekTime(dateString) {
       if (!dateString) return '-';
-      // Το "Z" στο τέλος λέει στον Browser ότι η ώρα που έρχεται είναι UTC (Παγκόσμια)
-      // Οπότε ο Browser την μετατρέπει αυτόματα σε ώρα Ελλάδας.
       const date = new Date(dateString.replace(' ', 'T') + 'Z'); 
       return date.toLocaleString('el-GR', { 
           timeZone: 'Europe/Athens',
@@ -261,20 +278,18 @@
       });
   }
 
-  // --- 1. ΦΟΡΤΩΣΗ DEΔΟΜΕΝΩΝ (CHAT & STATS) ---
+  // --- 1. LOAD DATA ---
   async function loadDashboardStats() {
     try {
       const res = await fetch(`${API_URL}/feedback/stats?detailed=true`);
       const data = await res.json();
       
-      // A. Γέμισμα KPIs
       document.getElementById('totalFeedback').innerText = data.total_feedback || 0;
       document.getElementById('positiveFeedback').innerText = data.positive || 0;
       document.getElementById('negativeFeedback').innerText = data.negative || 0;
       document.getElementById('satisfactionRate').innerText = (data.satisfaction_rate || 0) + '%';
       document.getElementById('uniqueUsers').innerText = data.unique_users || 0;
 
-      // Ποσοστά
       const total = data.total_feedback || 1;
       const posPct = Math.round((data.positive / total) * 100);
       const negPct = Math.round((data.negative / total) * 100);
@@ -282,7 +297,6 @@
       document.getElementById('negativePercent').innerText = negPct + '%';
       document.getElementById('sentimentTrend').innerText = data.sentiment_trend_percent || '-';
 
-      // B. Top Ερωτήσεις
       const qList = document.getElementById('topQuestionsList');
       if(data.top_questions && data.top_questions.length > 0){
           qList.innerHTML = data.top_questions.map(q => 
@@ -292,35 +306,26 @@
           qList.innerHTML = '<li>Δεν υπάρχουν δεδομένα</li>';
       }
 
-      // C. Γραφήματα
       renderCharts(data);
 
-      // D. Chat Table & Pagination
       allChatData = data.recent_feedback || [];
       currentChatPage = 1;
       renderChatTable();
 
-    } catch (e) {
-      console.error("Stats Error:", e);
-    }
+    } catch (e) { console.error("Stats Error:", e); }
   }
 
-  // --- 2. ΦΟΡΤΩΣΗ ΔΕΔΟΜΕΝΩΝ (SURVEY) ---
   async function loadSurveyResults() {
     try {
       const res = await fetch(`${API_URL}/survey_results`);
       const data = await res.json();
-      
       allSurveyData = data || [];
       currentSurveyPage = 1;
       renderSurveyTable();
-
-    } catch (e) {
-      console.error("Survey Error:", e);
-    }
+    } catch (e) { console.error("Survey Error:", e); }
   }
 
-  // --- 3. RENDER CHAT TABLE (ΔΙΟΡΘΩΜΕΝΟ ME ΕΛΛΗΝΙΚΗ ΩΡΑ) ---
+  // --- TABLES ---
   function renderChatTable() {
       const tbody = document.getElementById('chatTableBody');
       const start = (currentChatPage - 1) * ROWS_PER_PAGE;
@@ -334,33 +339,17 @@
           tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
           return;
       }
-
       tbody.innerHTML = pageData.map(item => `
         <tr>
           <td>#${item.id}</td>
-          
-          <td style="font-size:11px; white-space:nowrap;">
-            ${formatToGreekTime(item.timestamp)}
-          </td>
-          
-          <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;">
-            ${item.user_question || '-'}
-          </td>
-
-          <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; color: #a0aec0;">
-            ${item.bot_response || '-'}
-          </td>
-
-          <td>
-            ${item.is_positive 
-              ? '<span class="badge badge-pos">👍 Θετικό</span>' 
-              : '<span class="badge badge-neg">👎 Αρνητικό</span>'}
-          </td>
+          <td style="font-size:11px; white-space:nowrap;">${formatToGreekTime(item.timestamp)}</td>
+          <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;">${item.user_question || '-'}</td>
+          <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; color: #a0aec0;">${item.bot_response || '-'}</td>
+          <td>${item.is_positive ? '<span class="badge badge-pos">👍 Θετικό</span>' : '<span class="badge badge-neg">👎 Αρνητικό</span>'}</td>
         </tr>
       `).join('');
   }
 
-  // --- 4. RENDER SURVEY TABLE (ΔΙΟΡΘΩΜΕΝΟ ME ΕΛΛΗΝΙΚΗ ΩΡΑ) ---
   function renderSurveyTable() {
     const tbody = document.getElementById('surveyTableBody');
     const start = (currentSurveyPage - 1) * ROWS_PER_PAGE;
@@ -374,18 +363,13 @@
         tbody.innerHTML = '<tr><td colspan="22" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
         return;
     }
-
     tbody.innerHTML = pageData.map(item => `
         <tr>
           <td>#${item.id}</td>
-          
           <td style="font-size:11px; white-space:nowrap;">${formatToGreekTime(item.timestamp)}</td>
-          
           <td style="font-weight:500; color:#ffd700;">${item.scenarios_tested || item.scenarios || '-'}</td>
-          
           <td style="font-size:12px">${item.gender || '-'}</td>
           <td style="font-size:12px">${item.age || '-'}</td>
-
           <td class="q-cell">${item.q1||'-'}</td><td class="q-cell">${item.q2||'-'}</td>
           <td class="q-cell">${item.q3||'-'}</td><td class="q-cell">${item.q4||'-'}</td>
           <td class="q-cell">${item.q5||'-'}</td><td class="q-cell">${item.q6||'-'}</td>
@@ -394,28 +378,19 @@
           <td class="q-cell">${item.q11||'-'}</td><td class="q-cell">${item.q12||'-'}</td>
           <td class="q-cell">${item.q13||'-'}</td><td class="q-cell">${item.q14||'-'}</td>
           <td class="q-cell">${item.q15||'-'}</td>
-          
           <td class="q-cell" style="font-weight:bold; color:#1e90ff;">${item.q16 || '-'}</td>
         </tr>
       `).join('');
 }
 
-  // --- 5. PAGINATION CONTROLS ---
   function prevChatPage() { if(currentChatPage > 1) { currentChatPage--; renderChatTable(); } }
-  function nextChatPage() { 
-      const totalPages = Math.ceil(allChatData.length / ROWS_PER_PAGE);
-      if(currentChatPage < totalPages) { currentChatPage++; renderChatTable(); } 
-  }
-
+  function nextChatPage() { if(currentChatPage < Math.ceil(allChatData.length / ROWS_PER_PAGE)) { currentChatPage++; renderChatTable(); } }
   function prevSurveyPage() { if(currentSurveyPage > 1) { currentSurveyPage--; renderSurveyTable(); } }
-  function nextSurveyPage() { 
-      const totalPages = Math.ceil(allSurveyData.length / ROWS_PER_PAGE);
-      if(currentSurveyPage < totalPages) { currentSurveyPage++; renderSurveyTable(); } 
-  }
+  function nextSurveyPage() { if(currentSurveyPage < Math.ceil(allSurveyData.length / ROWS_PER_PAGE)) { currentSurveyPage++; renderSurveyTable(); } }
 
-  // --- 6. CHARTS ---
+  // --- CHARTS (FIXED SIZE) ---
   function renderCharts(data) {
-    // A. Trend Chart
+    // 1. Line Chart
     const ctxTrend = document.getElementById('feedbackChart');
     if(ctxTrend) {
       if(feedbackChartInstance) feedbackChartInstance.destroy();
@@ -437,6 +412,7 @@
         },
         options: { 
           responsive: true, 
+          maintainAspectRatio: false, // <-- Η ΔΙΟΡΘΩΣΗ: Γεμίζει το κουτί χωρίς να ξεχειλώνει
           plugins: { legend: {display:false} }, 
           scales: { 
             x: {grid: {display:false}, ticks:{color:'#94a3b8'}}, 
@@ -446,7 +422,7 @@
       });
     }
 
-    // B. Language Chart
+    // 2. Pie Chart
     const ctxLang = document.getElementById('languageChart');
     if(ctxLang) {
       if(languageChartInstance) languageChartInstance.destroy();
@@ -459,18 +435,20 @@
           labels: ['Ελληνικά', 'English'],
           datasets: [{ data: [el, en], backgroundColor: ['#3b82f6', '#10b981'], borderWidth: 0 }]
         },
-        options: { responsive: true, plugins: { legend: {position:'bottom', labels:{color:'#fff'}} } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, // <-- Η ΔΙΟΡΘΩΣΗ: Κρατάει την πίτα μέσα στο πλαίσιο
+            plugins: { legend: {position:'bottom', labels:{color:'#fff', boxWidth: 12}} } 
+        }
       });
     }
   }
 
-  // --- 7. BUTTON ACTIONS ---
   function refreshAll() { loadDashboardStats(); loadSurveyResults(); }
-  
   function exportData() { window.location.href = `${API_URL}/feedback/export?format=csv`; }
   
   async function clearAllFeedback() {
-    if(!confirm("ΠΡΟΣΟΧΗ: Θέλετε σίγουρα να διαγράψετε το ιστορικό CHAT; (Δεν επηρεάζει το ερωτηματολόγιο)")) return;
+    if(!confirm("ΠΡΟΣΟΧΗ: Θέλετε σίγουρα να διαγράψετε το ιστορικό CHAT;")) return;
     try {
       const res = await fetch(`${API_URL}/feedback/clear`, { method: 'POST' });
       const result = await res.json();
@@ -478,11 +456,9 @@
     } catch(e) { alert("❌ Σφάλμα σύνδεσης."); }
   }
 
-  // --- START ---
   refreshAll();
-  setInterval(refreshAll, 30000); // Auto-refresh κάθε 30 δευτ.
+  setInterval(refreshAll, 30000); 
 
 </script>
-
 </body>
 </html>

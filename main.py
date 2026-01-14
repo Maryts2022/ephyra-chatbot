@@ -1,19 +1,17 @@
 """
 Ephyra Chatbot - Production RAG
-Final Optimized Version: Full Features + Auto Language + Stats Fix + Correct Order
+Final Version: Strict Language Matching + Full Features
 """
 
 import os
 import io
-import uuid
 import logging
 import csv
 import string
-import json
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 from datetime import datetime, timedelta
 
 # Third-party imports
@@ -31,7 +29,7 @@ from slowapi.errors import RateLimitExceeded
 from elevenlabs.client import ElevenLabs
 from sentence_transformers import SentenceTransformer
 from openai import OpenAI
-from langdetect import detect, LangDetectException
+from langdetect import detect
 
 # ================== 1. Configuration & Setup ==================
 
@@ -189,12 +187,12 @@ def get_embedder():
     return embedder
 
 def get_direct_answer(question: str) -> Optional[Dict]:
-    """Returns hardcoded answers with English/Greek support."""
+    """Returns hardcoded answers with strict English/Greek support."""
     text_lower = question.lower().strip()
     
     # --- 1. SOCIAL MEDIA ---
     if any(kw in text_lower for kw in ['social', 'facebook', 'instagram', 'youtube', 'linkedin', 'σόσιαλ']):
-        if any(kw in text_lower for kw in ['follow', 'account', 'page', 'social']): # English check
+        if any(kw in text_lower for kw in ['follow', 'account', 'page', 'social', 'has', 'have']): # English hints
              return {
                 "answer": """Follow the Municipality of Corinth on Social Media:
 👍 **Facebook:** [Municipality of Corinth](https://www.facebook.com/dimoskorinthion)
@@ -211,7 +209,7 @@ def get_direct_answer(question: str) -> Optional[Dict]:
         }
 
     # --- 2. TOURISM ---
-    if any(kw in text_lower for kw in ['visit', 'sightseeing', 'museum', 'tourism', 'places', 'monuments']):
+    if any(kw in text_lower for kw in ['visit', 'sightseeing', 'museum', 'tourism', 'places', 'monuments', 'where to go']):
         return {
             "answer": """Suggested places to visit:
 1. **Ancient Corinth & Museum**: A journey through history.
@@ -275,20 +273,24 @@ Call +30 2741361000 for info.""",
 🕒 Δευ-Παρ 8:00-15:00""", "quality": "direct_match"
         }
     
-    # --- 5. MAYOR ---
-    if 'mayor' in text_lower:
+    # --- 5. MAYOR & MUNICIPALITY LOCATION ---
+    if any(kw in text_lower for kw in ['mayor', 'municipal', 'town hall']):
         return {
-            "answer": """Mayor: **Nikos Stavrelis**
-📞 +30 27413-61001
-📧 grafeiodimarxou@korinthos.gr
-📍 32 Koliatsou Str""", "quality": "direct_match"
+            "answer": """Municipality of Corinth (Town Hall):
+
+Mayor: **Nikos Stavrelis**
+📍 Address: 32 Koliatsou Str, 201 31 Corinth
+📞 Phone: +30 27413-61001
+📧 Email: grafeiodimarxou@korinthos.gr""", "quality": "direct_match"
         }
-    if any(kw in text_lower for kw in ['δήμαρχ', 'δημαρχ']):
+    if any(kw in text_lower for kw in ['δήμαρχ', 'δημαρχ', 'δημαρχείο']):
         return {
-            "answer": """Δήμαρχος: **Νίκος Σταυρέλης**
-📞 27413-61001
-📧 grafeiodimarxou@korinthos.gr
-📍 Κολιάτσου 32""", "quality": "direct_match"
+            "answer": """Δημαρχείο Κορινθίων:
+
+Δήμαρχος: **Νίκος Σταυρέλης**
+📍 Διεύθυνση: Κολιάτσου 32, 201 31 Κόρινθος
+📞 Τηλέφωνο: 27413-61001
+📧 Email: grafeiodimarxou@korinthos.gr""", "quality": "direct_match"
         }
 
     return None
@@ -310,10 +312,9 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
         log.error(f"Search Error: {e}")
         return []
 
-# ================== 6. FastAPI App (MUST BE HERE) ==================
+# ================== 6. FastAPI App ==================
 
-# ΠΡΟΣΟΧΗ: Η εφαρμογή 'app' πρέπει να δημιουργηθεί ΠΡΙΝ από τα endpoints!
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.2.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.3.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -385,28 +386,38 @@ async def get_questionnaire():
     if os.path.exists(path): return FileResponse(path)
     return {"error": "Questionnaire not found"}
 
-# --- MAIN CHAT ENDPOINT (AUTO LANGUAGE) ---
+# --- MAIN CHAT ENDPOINT (IMPROVED LANG DETECT) ---
 @app.post("/ask")
 @limiter.limit("30/minute")
 async def ask(request: Request, body: AskBody):
+    # Default lang from button
     target_lang = body.lang or "el"
     question = (body.messages[-1].content if body.messages else "").strip()
     if not question: return {"answer": "..."}
 
-    # Auto-detect language override
-    try:
-        if len(question) > 3:
-            detected = detect(question)
-            if detected == 'en': target_lang = 'en'
-            elif detected == 'el': target_lang = 'el'
-    except: pass
+    # 1. ENHANCED LANGUAGE DETECTION (Manual + Library)
+    # Check for common English words first (more reliable for short texts like "hi")
+    english_keywords = {'hello', 'hi', 'where', 'municipal', 'mayor', 'thank', 'when', 'what', 'how', 'who'}
+    question_words = set(re.sub(r'[^\w\s]', '', question.lower()).split())
+    
+    if any(word in question_words for word in english_keywords):
+        target_lang = 'en'
+    else:
+        # Fallback to library detection
+        try:
+            if len(question) > 3:
+                detected = detect(question)
+                if detected == 'en': target_lang = 'en'
+        except: pass
 
+    # 2. DIRECT ANSWER CHECK
     direct_resp = get_direct_answer(question)
     if direct_resp:
         async def direct_stream():
             yield direct_resp["answer"]
         return StreamingResponse(direct_stream(), media_type="text/plain")
 
+    # 3. RAG Search
     csv_context = ""
     def clean_text(t):
         if not t: return ""
@@ -426,17 +437,22 @@ async def ask(request: Request, body: AskBody):
             db_text = "\n".join([f"Info: {d['question']} - {d['answer']}" for d in db_docs])
             cursor.close()
             all_context = csv_context + "\n" + db_text
+            
+            # 4. STRICT SYSTEM PROMPT
+            # Explicitly telling GPT to follow user language, regardless of context language.
             sys_msg = (
-                f"Είσαι η Εφύρα, ψηφιακή βοηθός του Δήμου Κορινθίων. "
-                f"Απάντησε ΑΥΣΤΗΡΑ στη γλώσσα: {target_lang} (Greek ή English). "
-                f"Χρησιμοποίησε ΜΟΝΟ το CONTEXT. "
-                f"Αν η ερώτηση είναι στα Αγγλικά, μετάφρασε την απάντηση στα Αγγλικά."
+                f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
+                f"INSTRUCTION: You MUST answer in the same language as the user's last message. "
+                f"If the user writes in English, answer in English. "
+                f"If the user writes in Greek, answer in Greek. "
+                f"Use the CONTEXT below to answer. "
+                f"Context: {all_context}"
             )
+            
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": sys_msg},
-                    {"role": "system", "content": f"CONTEXT:\n{all_context}"},
                     {"role": "user", "content": question}
                 ],
                 temperature=0.7,
@@ -453,7 +469,7 @@ async def ask(request: Request, body: AskBody):
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
-# --- FEEDBACK & STATS (FIXED PIE CHART) ---
+# --- FEEDBACK & STATS ---
 @app.post("/feedback")
 async def record_feedback(request: Request):
     try:
