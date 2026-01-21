@@ -458,7 +458,7 @@ async def ask(request: Request, body: AskBody):
                     {"role": "system", "content": sys_msg},
                     {"role": "user", "content": question}
                 ],
-                temperature=0.7,
+                temperature=0.3,
                 stream=True
             )
             for chunk in response:
