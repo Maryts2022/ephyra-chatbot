@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Strict Language Matching + Full Features
+Final Version: Strict Context + MITOS Link Integration
 """
 
 import os
@@ -147,7 +147,10 @@ def sync_csv_to_db():
         conn = get_db_conn()
         cur = conn.cursor()
         log.info("🔄 Syncing CSV to DB...")
-        model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+        
+        # Χρήση του global embedder για ταχύτητα
+        model = get_embedder()
+        
         cur.execute("TRUNCATE public.kb_items_raw;")
         cur.execute("""
             CREATE INDEX IF NOT EXISTS kb_items_embedding_idx 
@@ -178,13 +181,13 @@ def sync_csv_to_db():
 
 # ================== 5. Helper Functions ==================
 
-embedder = None
-@lru_cache(maxsize=1)
+# Proactive Loading (για ταχύτητα)
+log.info("🚀 Pre-loading AI Model into Memory...")
+global_embedder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+log.info("✅ AI Model Loaded & Ready!")
+
 def get_embedder():
-    global embedder
-    if embedder is None:
-        embedder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-    return embedder
+    return global_embedder
 
 def get_direct_answer(question: str) -> Optional[Dict]:
     """Returns hardcoded answers with strict English/Greek support."""
@@ -314,7 +317,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.3.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.6.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -386,7 +389,7 @@ async def get_questionnaire():
     if os.path.exists(path): return FileResponse(path)
     return {"error": "Questionnaire not found"}
 
-# --- MAIN CHAT ENDPOINT (IMPROVED LANG DETECT) ---
+# --- MAIN CHAT ENDPOINT ---
 @app.post("/ask")
 @limiter.limit("30/minute")
 async def ask(request: Request, body: AskBody):
@@ -395,22 +398,20 @@ async def ask(request: Request, body: AskBody):
     question = (body.messages[-1].content if body.messages else "").strip()
     if not question: return {"answer": "..."}
 
-    # 1. ENHANCED LANGUAGE DETECTION (Manual + Library)
-    # Check for common English words first (more reliable for short texts like "hi")
+    # 1. LANGUAGE DETECTION
     english_keywords = {'hello', 'hi', 'where', 'municipal', 'mayor', 'thank', 'when', 'what', 'how', 'who'}
     question_words = set(re.sub(r'[^\w\s]', '', question.lower()).split())
     
     if any(word in question_words for word in english_keywords):
         target_lang = 'en'
     else:
-        # Fallback to library detection
         try:
             if len(question) > 3:
                 detected = detect(question)
                 if detected == 'en': target_lang = 'en'
         except: pass
 
-    # 2. DIRECT ANSWER CHECK
+    # 2. DIRECT ANSWER
     direct_resp = get_direct_answer(question)
     if direct_resp:
         async def direct_stream():
@@ -438,17 +439,18 @@ async def ask(request: Request, body: AskBody):
             cursor.close()
             all_context = csv_context + "\n" + db_text
             
-            # 4. STRICT SYSTEM PROMPT
-            # Explicitly telling GPT to follow user language, regardless of context language.
+            # 4. VERY STRICT SYSTEM PROMPT + MITOS LINK 🏛️
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
-                f"1. You MUST answer in the same language as the user's last message ({current_lang}).\n"
+                f"1. You MUST answer in the same language as the user's last message ({target_lang}).\n"
                 f"2. You must answer ONLY using the provided CONTEXT below. Do NOT use your internal training data or general knowledge.\n"
                 f"3. If the answer is NOT explicitly in the CONTEXT, you must say: "
                 f"'Δυστυχώς, δεν έχω αυτή την πληροφορία στη βάση δεδομένων μου.' (if Greek) "
                 f"or 'Unfortunately, I do not have this information in my database.' (if English).\n"
-                f"4. Do not hallucinate facts.\n\n"
+                f"4. Do not hallucinate facts.\n"
+                f"5. IMPORTANT: If you mention 'korinthos.gr' or refer to general municipal services, YOU MUST ALSO append this link for public procedures: "
+                f"'https://mitos.gov.gr/index.php/%CE%91%CF%81%CF%87%CE%B9%CE%BA%CE%AE_%CF%83%CE%B5%CE%BB%CE%AF%CE%B4%CE%B1'\n\n"
                 f"CONTEXT:\n{all_context}"
             )
             
