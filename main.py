@@ -189,8 +189,8 @@ log.info("✅ AI Model Loaded & Ready!")
 def get_embedder():
     return global_embedder
 
-MITOS_LINK_EL = "\n\n🔗 **Εθνικό Μητρώο Διαδικασιών:** [mitos.gov.gr](https://mitos.gov.gr/index.php/%CE%91%CF%81%CF%87%CE%B9%CE%BA%CE%AE_%CF%83%CE%B5%CE%BB%CE%AF%CE%B4%CE%B1)"
-MITOS_LINK_EN = "\n\n🔗 **National Registry of Procedures:** [mitos.gov.gr](https://mitos.gov.gr/index.php/%CE%91%CF%81%CF%87%CE%B9%CE%BA%CE%AE_%CF%83%CE%B5%CE%BB%CE%AF%CE%B4%CE%B1)"
+MITOS_LINK_EL = "\n\n🔗 **Εθνικό Μητρώο Διαδικασιών:** [mitos.gov.gr](https://mitos.gov.gr)"
+MITOS_LINK_EN = "\n\n🔗 **National Registry of Procedures:** [mitos.gov.gr](https://mitos.gov.gr)"
 
 def get_direct_answer(question: str) -> Optional[Dict]:
     """Returns hardcoded answers with strict English/Greek support + MITOS Link."""
