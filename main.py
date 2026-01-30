@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Hardcoded MITOS Link + Strict AI Context
+Final Version: Smart MITOS Link (Procedures ONLY)
 """
 
 import os
@@ -189,11 +189,9 @@ log.info("✅ AI Model Loaded & Ready!")
 def get_embedder():
     return global_embedder
 
-MITOS_LINK_EL = "\n\n🔗 **Εθνικό Μητρώο Διαδικασιών:** [mitos.gov.gr](https://mitos.gov.gr)"
-MITOS_LINK_EN = "\n\n🔗 **National Registry of Procedures:** [mitos.gov.gr](https://mitos.gov.gr)"
-
 def get_direct_answer(question: str) -> Optional[Dict]:
-    """Returns hardcoded answers with strict English/Greek support + MITOS Link."""
+    """Returns hardcoded answers with strict English/Greek support."""
+    # ΣΗΜΕΙΩΣΗ: Αφαιρέσαμε τα Links από εδώ για να μην μπαίνουν στις γενικές πληροφορίες!
     text_lower = question.lower().strip()
     
     # --- 1. SOCIAL MEDIA ---
@@ -246,12 +244,12 @@ Do you need directions?""",
 4. Evangelos Papaioannou (Tourism/Edu)
 5. Andreas Zogkos (Technical)
 6. Anastasios Tagaras (Culture)
-Call +30 2741361000 for info.""" + MITOS_LINK_EN,
+Call +30 2741361000 for info.""",
             "quality": "direct_match"
         }
     if 'αντιδήμαρχ' in text_lower or 'αντιδημαρχ' in text_lower:
         if 'καθαριότ' in text_lower or 'καθαριοτ' in text_lower:
-             return {"answer": "Αντιδήμαρχος Καθαριότητας: κ. Δημήτριος Μανωλάκης (Τηλ: 2741361000)" + MITOS_LINK_EL, "quality": "direct_match"}
+             return {"answer": "Αντιδήμαρχος Καθαριότητας: κ. Δημήτριος Μανωλάκης (Τηλ: 2741361000)", "quality": "direct_match"}
         return {
             "answer": """Οι Αντιδήμαρχοι είναι:
 1. Γ. Πούρος (Διοικητικών)
@@ -259,7 +257,7 @@ Call +30 2741361000 for info.""" + MITOS_LINK_EN,
 3. Δ. Μανωλάκης (Καθαριότητας)
 4. Ε. Παπαϊωάννου (Παιδείας/Τουρισμού)
 5. Α. Ζώγκος (Τεχνικών)
-6. Α. Ταγαράς (Πολιτισμού)""" + MITOS_LINK_EL,
+6. Α. Ταγαράς (Πολιτισμού)""",
             "quality": "direct_match"
         }
 
@@ -269,14 +267,14 @@ Call +30 2741361000 for info.""" + MITOS_LINK_EN,
             "answer": """KEP Corinth:
 📍 53 Kosti Palama Str
 📞 +30 2741363555
-🕒 Mon-Fri 8:00-15:00""" + MITOS_LINK_EN, "quality": "direct_match"
+🕒 Mon-Fri 8:00-15:00""", "quality": "direct_match"
         }
     if any(kw in text_lower for kw in ['κεπ', 'κέντρο εξυπηρέτησης']):
         return {
             "answer": """ΚΕΠ Κορίνθου:
 📍 Κωστή Παλαμά 53
 📞 2741363555
-🕒 Δευ-Παρ 8:00-15:00""" + MITOS_LINK_EL, "quality": "direct_match"
+🕒 Δευ-Παρ 8:00-15:00""", "quality": "direct_match"
         }
     
     # --- 5. MAYOR & MUNICIPALITY LOCATION ---
@@ -287,7 +285,7 @@ Call +30 2741361000 for info.""" + MITOS_LINK_EN,
 Mayor: **Nikos Stavrelis**
 📍 Address: 32 Koliatsou Str, 201 31 Corinth
 📞 Phone: +30 27413-61001
-📧 Email: grafeiodimarxou@korinthos.gr""" + MITOS_LINK_EN, "quality": "direct_match"
+📧 Email: grafeiodimarxou@korinthos.gr""", "quality": "direct_match"
         }
     if any(kw in text_lower for kw in ['δήμαρχ', 'δημαρχ', 'δημαρχείο']):
         return {
@@ -296,7 +294,7 @@ Mayor: **Nikos Stavrelis**
 Δήμαρχος: **Νίκος Σταυρέλης**
 📍 Διεύθυνση: Κολιάτσου 32, 201 31 Κόρινθος
 📞 Τηλέφωνο: 27413-61001
-📧 Email: grafeiodimarxou@korinthos.gr""" + MITOS_LINK_EL, "quality": "direct_match"
+📧 Email: grafeiodimarxou@korinthos.gr""", "quality": "direct_match"
         }
 
     return None
@@ -320,7 +318,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.7.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.8.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -414,7 +412,7 @@ async def ask(request: Request, body: AskBody):
                 if detected == 'en': target_lang = 'en'
         except: pass
 
-    # 2. DIRECT ANSWER (With MITOS Link Now!)
+    # 2. DIRECT ANSWER (CLEAN - No Links)
     direct_resp = get_direct_answer(question)
     if direct_resp:
         async def direct_stream():
@@ -442,7 +440,8 @@ async def ask(request: Request, body: AskBody):
             cursor.close()
             all_context = csv_context + "\n" + db_text
             
-            # 4. VERY STRICT SYSTEM PROMPT + MITOS LINK 🏛️
+            # 4. VERY STRICT & SMART SYSTEM PROMPT 🧠
+            # Η Εξυπνάδα: Διαχωρίζει τις Διαδικασίες από τις Πληροφορίες!
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
@@ -452,8 +451,12 @@ async def ask(request: Request, body: AskBody):
                 f"'Δυστυχώς, δεν έχω αυτή την πληροφορία στη βάση δεδομένων μου.' (if Greek) "
                 f"or 'Unfortunately, I do not have this information in my database.' (if English).\n"
                 f"4. Do not hallucinate facts.\n"
-                f"5. IMPORTANT: ALWAYS append this link at the end of your answer for official procedures: "
-                f"'https://mitos.gov.gr'\n\n"
+                f"5. LINKING LOGIC (MITOS.GOV.GR):\n"
+                f"   - IF the user asks about an administrative PROCEDURE (e.g. issuing certificates, marriage license, birth act, permits), "
+                f"     THEN append this link at the end: 'https://mitos.gov.gr'.\n"
+                f"   - IF the user asks for GENERAL INFO (e.g. history, mayor's name, phone numbers, location, opening hours), "
+                f"     THEN DO NOT append the link.\n"
+                f"   - NEVER duplicate the link if it is already in the text.\n\n"
                 f"CONTEXT:\n{all_context}"
             )
             
