@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Smart MITOS Link with Introduction Phrase
+Final Version: Removed Hardcoded Tourism + Refined MITOS Logic + Help Answer
 """
 
 import os
@@ -190,51 +190,23 @@ def get_embedder():
     return global_embedder
 
 def get_direct_answer(question: str) -> Optional[Dict]:
-    """Returns hardcoded answers with strict English/Greek support."""
-    # ΣΗΜΕΙΩΣΗ: Αφαιρέσαμε τα Links από εδώ για να μπαίνουν μέσω AI
+    """Returns hardcoded answers. REMOVED TOURISM to let AI handle specific counts."""
     text_lower = question.lower().strip()
     
-    # --- 1. SOCIAL MEDIA ---
-    if any(kw in text_lower for kw in ['social', 'facebook', 'instagram', 'youtube', 'linkedin', 'σόσιαλ']):
-        if any(kw in text_lower for kw in ['follow', 'account', 'page', 'social', 'has', 'have']):
-             return {
-                "answer": """Follow the Municipality of Corinth on Social Media:
-👍 **Facebook:** [Municipality of Corinth](https://www.facebook.com/dimoskorinthion)
-📸 **Instagram:** [@dimos.korinthion](https://www.instagram.com/dimos.korinthion)
-🎥 **YouTube:** [Municipality of Corinth](https://www.youtube.com/@dimoskorinthion)""",
-                "quality": "direct_match"
-            }
+    # --- 1. GENERAL HELP / CAPABILITIES (ΝΕΟ!) ---
+    if any(kw in text_lower for kw in ['τι μπορείς να κάνεις', 'τι ξέρεις', 'τι πληροφορίες', 'βοήθεια', 'δυνατότητες', 'help', 'what can you do']):
         return {
-            "answer": """Ακολουθήστε τον Δήμο Κορινθίων στα Social Media:
-👍 **Facebook:** [Δήμος Κορινθίων](https://www.facebook.com/dimoskorinthion)
-📸 **Instagram:** [@dimos.korinthion](https://www.instagram.com/dimos.korinthion)
-🎥 **YouTube:** [Δήμος Κορινθίων](https://www.youtube.com/@dimoskorinthion)""",
+            "answer": """Μπορώ να σας δώσω πληροφορίες για:
+✅ Διαδικασίες (Πιστοποιητικά, Ληξιαρχείο, Μεταδημότευση)
+✅ Επικοινωνία (Τηλέφωνα, Email, Ωράρια Υπηρεσιών & ΚΕΠ)
+✅ Τουρισμό (Αξιοθέατα, Μουσεία, Παραλίες)
+✅ Διοίκηση (Δήμαρχος, Αντιδήμαρχοι)
+
+Πληκτρολογήστε την ερώτησή σας!""",
             "quality": "direct_match"
         }
 
-    # --- 2. TOURISM ---
-    if any(kw in text_lower for kw in ['visit', 'sightseeing', 'museum', 'tourism', 'places', 'monuments', 'where to go']):
-        return {
-            "answer": """Suggested places to visit:
-1. **Ancient Corinth & Museum**: A journey through history.
-2. **Acrocorinth**: The imposing castle.
-3. **Corinth Canal**: World-famous landmark.
-4. **Kalamia Beach**: For relaxation by the sea.
-Do you need directions?""",
-            "quality": "direct_match"
-        }
-    if any(kw in text_lower for kw in ['επισκεφτώ', 'επισκεφθώ', 'αξιοθέατα', 'μουσεία', 'τουρισμ', 'βόλτα', 'μέρη']):
-        return {
-            "answer": """Προτάσεις επίσκεψης:
-1. **Αρχαία Κόρινθος & Μουσείο**: Ταξίδι στην ιστορία.
-2. **Ακροκόρινθος**: Το κάστρο με τη μοναδική θέα.
-3. **Διώρυγα (Ισθμός)**: Παγκόσμιο αξιοθέατο.
-4. **Παραλία Καλάμια**: Για βόλτα και χαλάρωση.
-Χρειάζεστε οδηγίες;""",
-            "quality": "direct_match"
-        }
-
-    # --- 3. DEPUTY MAYORS ---
+    # --- 2. DEPUTY MAYORS ---
     if 'deputy mayor' in text_lower or 'vice mayor' in text_lower:
          return {
             "answer": """The Deputy Mayors are:
@@ -261,7 +233,7 @@ Call +30 2741361000 for info.""",
             "quality": "direct_match"
         }
 
-    # --- 4. KEP ---
+    # --- 3. KEP ---
     if 'kep' in text_lower or 'citizens service' in text_lower:
         return {
             "answer": """KEP Corinth:
@@ -277,7 +249,7 @@ Call +30 2741361000 for info.""",
 🕒 Δευ-Παρ 8:00-15:00""", "quality": "direct_match"
         }
     
-    # --- 5. MAYOR & MUNICIPALITY LOCATION ---
+    # --- 4. MAYOR & MUNICIPALITY LOCATION ---
     if any(kw in text_lower for kw in ['mayor', 'municipal', 'town hall']):
         return {
             "answer": """Municipality of Corinth (Town Hall):
@@ -318,7 +290,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.10.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.11.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -441,7 +413,7 @@ async def ask(request: Request, body: AskBody):
             all_context = csv_context + "\n" + db_text
             
             # 4. VERY STRICT & SMART SYSTEM PROMPT 🧠
-            # ΠΡΟΣΘΗΚΗ: Η φράση που ζήτησες!
+            # ΠΡΟΣΘΗΚΗ: Αρνητικός Κανόνας για Τηλέφωνα & Διαγραφή Hardcoded Tourism
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
@@ -452,12 +424,13 @@ async def ask(request: Request, body: AskBody):
                 f"or 'Unfortunately, I do not have this information in my database.' (if English).\n"
                 f"4. Do not hallucinate facts.\n"
                 f"5. LINKING LOGIC (MITOS.GOV.GR):\n"
-                f"   - **MANDATORY RULE:** IF the user asks about an administrative PROCEDURE. \n"
-                f"     (Keywords: 'Πιστοποιητικό', 'Βεβαίωση', 'Άδεια', 'Γάμος', 'Ληξιαρχείο', 'Δημοτολόγιο', 'Μεταδημότευση', 'Αίτηση', 'Δικαιολογητικά', 'Certificate', 'Application', 'Marriage')\n"
+                f"   - **MANDATORY RULE:** IF the user asks about an administrative PROCEDURE (e.g. certificates, marriage, birth act, transfers).\n"
+                f"     (Positive Keywords: 'Πιστοποιητικό', 'Βεβαίωση', 'Άδεια', 'Γάμος', 'Ληξιαρχείο', 'Δημοτολόγιο', 'Μεταδημότευση', 'Αίτηση', 'Δικαιολογητικά')\n"
                 f"     THEN YOU MUST append this exact phrase at the very end: "
                 f"     '\n\nΓια περισσότερες πληροφορίες μπορείτε να επισκεφθείτε και το mitos: https://mitos.gov.gr'.\n"
-                f"   - **Even if the context provides a specific 'korinthos.gr' link, you MUST ALSO append the phrase above.**\n"
-                f"   - IF the user asks for GENERAL INFO (e.g. history, mayor, phone numbers, location), THEN DO NOT append the link.\n"
+                f"   - **NEGATIVE RULE:** IF the user asks for GENERAL INFO, CONTACT DETAILS, or TOURISM (e.g. phones, email, address, hours, mayor, sightseeing).\n"
+                f"     (Negative Keywords: 'Τηλέφωνο', 'Email', 'Διεύθυνση', 'Ωράριο', 'Πού είναι', 'Δήμαρχος', 'Αξιοθέατα', 'Επικοινωνία')\n"
+                f"     THEN **DO NOT** append the mitos link.\n"
                 f"   - NEVER duplicate the 'mitos.gov.gr' link if it is already in the text.\n\n"
                 f"CONTEXT:\n{all_context}"
             )
