@@ -24,6 +24,22 @@
     }
     a{color:inherit; text-decoration:none}
 
+    /* --- ANIMATION ΓΙΑ ΤΙΣ ΤΕΛΕΙΕΣ (WAVE EFFECT) --- */
+    .loading-dot {
+        display: inline-block;
+        margin-left: 2px;
+        animation: dotWave 1.3s infinite ease-in-out both;
+    }
+    .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+    .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+    .loading-dot:nth-child(3) { animation-delay: 0s; }
+
+    @keyframes dotWave {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.6; }
+        40% { transform: scale(1.2); opacity: 1; }
+    }
+    /* ------------------------------------------------ */
+
     .site-header{position:sticky; top:0; z-index:50; backdrop-filter:saturate(1.2) blur(10px);}
     .nav-wrap{max-width:1180px; margin:18px auto 0; padding:0 16px;}
     .nav{
@@ -660,7 +676,6 @@
     </form>
   </section>
 
-  <!-- Accessibility Panel -->
   <div class="accessibility-panel" id="accessibilityPanel">
     <h3>Προσβασιμότητα</h3>
     
@@ -1453,12 +1468,13 @@ form.addEventListener('submit', async (e) => {
     input.value = '';
     conversationHistory.push({ role: 'user', content: text });
 
-    // 2. Δημιουργία Μπλε Κουτιού με κείμενο αναμονής (Placeholder)
+    // 2. Δημιουργία Μπλε Κουτιού με ANIMATED τελείες
     const botMsg = document.createElement('div');
     botMsg.className = 'msg bot';
     botMsg.style.fontStyle = 'italic';
     botMsg.style.color = '#666'; 
-    botMsg.innerHTML = "Η Εφύρα σκέφτεται..."; // Αυτό θα φαίνεται μέχρι να έρθει η απάντηση
+    // ✨ ΕΔΩ ΕΙΝΑΙ Η ΑΛΛΑΓΗ ΓΙΑ ΤΟ ANIMATION
+    botMsg.innerHTML = `Η Εφύρα σκέφτεται<span class="loading-dot">.</span><span class="loading-dot">.</span><span class="loading-dot">.</span>`;
     messages.appendChild(botMsg);
     messages.scrollTop = messages.scrollHeight;
 
@@ -1486,8 +1502,7 @@ form.addEventListener('submit', async (e) => {
             const chunk = decoder.decode(value, { stream: true });
             if (!chunk) continue;
 
-            // --- Η ΑΛΛΑΓΗ ---
-            // Μόλις έρθει το πρώτο γράμμα, σβήνουμε το "σκέφτεται..."
+            // Μόλις έρθει το πρώτο γράμμα, σβήνουμε το animation
             if (isFirstChunk) {
                 botMsg.innerHTML = "";       
                 botMsg.style.fontStyle = 'normal'; 
