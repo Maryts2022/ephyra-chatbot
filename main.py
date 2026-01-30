@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Removed Hardcoded Tourism + Refined MITOS Logic + Help Answer
+Final Version: Static Links + Smart Counting + Strict Logic
 """
 
 import os
@@ -189,11 +189,43 @@ log.info("✅ AI Model Loaded & Ready!")
 def get_embedder():
     return global_embedder
 
+# --- STATIC KNOWLEDGE (Το "Σκονάκι" του Bot) ---
+# Εδώ βάζουμε ΟΛΑ τα links και τις πληροφορίες που θέλουμε να είναι ΣΙΓΟΥΡΕΣ.
+STATIC_KNOWLEDGE = """
+[STANDARD MUNICIPAL INFO & LINKS]
+
+1. ΔΕΥΑ Κορίνθου (Ύδρευση/Αποχέτευση):
+   - Τηλέφωνο Βλαβών (24ωρο): 6936776041
+   - Τηλεφωνικό Κέντρο: 2741024444
+   - Email: info@deyakor.gr
+   - (Σημείωση: Στις βλάβες ΔΕΝ βάζουμε link Mitos).
+
+2. Ιστορία:
+   - Η Κόρινθος καταστράφηκε από μεγάλους σεισμούς το 1858 και το 1928.
+   - Μετά τον σεισμό του 1858, η πόλη μεταφέρθηκε στη σημερινή της θέση (Νέα Κόρινθος).
+
+3. Τουρισμός - Αξιοθέατα (Λίστα για επιλογή):
+   - Αρχαία Κόρινθος & Αρχαιολογικό Μουσείο.
+   - Ακροκόρινθος (Κάστρο).
+   - Διώρυγα της Κορίνθου (Ισθμός).
+   - Παραλία Καλάμια (Κέντρο πόλης).
+   - Παραλία Λουτρά Ωραίας Ελένης.
+   - Λαογραφικό Μουσείο Κορίνθου.
+
+4. Διοίκηση:
+   - Αντιδήμαρχος Καθαριότητας: Δ. Μανωλάκης (Τηλ: 2741361000).
+
+5. ΣΥΝΔΕΣΜΟΙ ΔΗΜΟΥ (MUNICIPAL LINKS) - ΝΑ ΧΡΗΣΙΜΟΠΟΙΟΥΝΤΑΙ ΠΑΝΤΑ:
+   - Για Ληξιαρχικές Πράξεις (Γέννησης, Θανάτου, Γάμου): https://korinthos.gr/odhgos-polith/vasikes-uphresies/lhksiarxeio/
+   - Για Πιστοποιητικά (Γέννησης, Οικ. Κατάστασης, Εντοπιότητας): https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/
+   - Για Μεταδημότευση: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/metadhmoteysh/
+   - Για Πολιτικούς Γάμους: https://korinthos.gr/odhgos-polith/vasikes-uphresies/politiki-gamoi/
+"""
+
 def get_direct_answer(question: str) -> Optional[Dict]:
-    """Returns hardcoded answers. REMOVED TOURISM to let AI handle specific counts."""
     text_lower = question.lower().strip()
     
-    # --- 1. GENERAL HELP / CAPABILITIES (ΝΕΟ!) ---
+    # --- 1. GENERAL HELP ---
     if any(kw in text_lower for kw in ['τι μπορείς να κάνεις', 'τι ξέρεις', 'τι πληροφορίες', 'βοήθεια', 'δυνατότητες', 'help', 'what can you do']):
         return {
             "answer": """Μπορώ να σας δώσω πληροφορίες για:
@@ -205,64 +237,11 @@ def get_direct_answer(question: str) -> Optional[Dict]:
 Πληκτρολογήστε την ερώτησή σας!""",
             "quality": "direct_match"
         }
-
-    # --- 2. DEPUTY MAYORS ---
-    if 'deputy mayor' in text_lower or 'vice mayor' in text_lower:
-         return {
-            "answer": """The Deputy Mayors are:
-1. Georgios Pouros (Admin)
-2. Vasileios Pantazis (Urban Planning)
-3. Dimitrios Manolakis (Cleaning)
-4. Evangelos Papaioannou (Tourism/Edu)
-5. Andreas Zogkos (Technical)
-6. Anastasios Tagaras (Culture)
-Call +30 2741361000 for info.""",
-            "quality": "direct_match"
-        }
-    if 'αντιδήμαρχ' in text_lower or 'αντιδημαρχ' in text_lower:
-        if 'καθαριότ' in text_lower or 'καθαριοτ' in text_lower:
-             return {"answer": "Αντιδήμαρχος Καθαριότητας: κ. Δημήτριος Μανωλάκης (Τηλ: 2741361000)", "quality": "direct_match"}
-        return {
-            "answer": """Οι Αντιδήμαρχοι είναι:
-1. Γ. Πούρος (Διοικητικών)
-2. Β. Πανταζής (Πολεοδομίας)
-3. Δ. Μανωλάκης (Καθαριότητας)
-4. Ε. Παπαϊωάννου (Παιδείας/Τουρισμού)
-5. Α. Ζώγκος (Τεχνικών)
-6. Α. Ταγαράς (Πολιτισμού)""",
-            "quality": "direct_match"
-        }
-
-    # --- 3. KEP ---
-    if 'kep' in text_lower or 'citizens service' in text_lower:
-        return {
-            "answer": """KEP Corinth:
-📍 53 Kosti Palama Str
-📞 +30 2741363555
-🕒 Mon-Fri 8:00-15:00""", "quality": "direct_match"
-        }
-    if any(kw in text_lower for kw in ['κεπ', 'κέντρο εξυπηρέτησης']):
-        return {
-            "answer": """ΚΕΠ Κορίνθου:
-📍 Κωστή Παλαμά 53
-📞 2741363555
-🕒 Δευ-Παρ 8:00-15:00""", "quality": "direct_match"
-        }
     
-    # --- 4. MAYOR & MUNICIPALITY LOCATION ---
-    if any(kw in text_lower for kw in ['mayor', 'municipal', 'town hall']):
-        return {
-            "answer": """Municipality of Corinth (Town Hall):
-
-Mayor: **Nikos Stavrelis**
-📍 Address: 32 Koliatsou Str, 201 31 Corinth
-📞 Phone: +30 27413-61001
-📧 Email: grafeiodimarxou@korinthos.gr""", "quality": "direct_match"
-        }
-    if any(kw in text_lower for kw in ['δήμαρχ', 'δημαρχ', 'δημαρχείο']):
+    # --- 2. LOCATION ---
+    if any(kw in text_lower for kw in ['mayor', 'municipal', 'town hall', 'δημαρχείο', 'δήμαρχος']):
         return {
             "answer": """Δημαρχείο Κορινθίων:
-
 Δήμαρχος: **Νίκος Σταυρέλης**
 📍 Διεύθυνση: Κολιάτσου 32, 201 31 Κόρινθος
 📞 Τηλέφωνο: 27413-61001
@@ -290,7 +269,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.11.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.13.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -384,7 +363,7 @@ async def ask(request: Request, body: AskBody):
                 if detected == 'en': target_lang = 'en'
         except: pass
 
-    # 2. DIRECT ANSWER (CLEAN - No Links)
+    # 2. DIRECT ANSWER (Minimal)
     direct_resp = get_direct_answer(question)
     if direct_resp:
         async def direct_stream():
@@ -410,28 +389,24 @@ async def ask(request: Request, body: AskBody):
             db_docs = retrieve_context(cursor, question, top_k=4)
             db_text = "\n".join([f"Info: {d['question']} - {d['answer']}" for d in db_docs])
             cursor.close()
-            all_context = csv_context + "\n" + db_text
             
-            # 4. VERY STRICT & SMART SYSTEM PROMPT 🧠
-            # ΠΡΟΣΘΗΚΗ: Αρνητικός Κανόνας για Τηλέφωνα & Διαγραφή Hardcoded Tourism
+            # --- COMBINE CONTEXT ---
+            all_context = STATIC_KNOWLEDGE + "\n" + csv_context + "\n" + db_text
+            
+            # 4. FINAL SYSTEM PROMPT
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
                 f"1. You MUST answer in the same language as the user's last message ({target_lang}).\n"
-                f"2. You must answer ONLY using the provided CONTEXT below. Do NOT use your internal training data or general knowledge.\n"
-                f"3. If the answer is NOT explicitly in the CONTEXT, you must say: "
-                f"'Δυστυχώς, δεν έχω αυτή την πληροφορία στη βάση δεδομένων μου.' (if Greek) "
-                f"or 'Unfortunately, I do not have this information in my database.' (if English).\n"
-                f"4. Do not hallucinate facts.\n"
-                f"5. LINKING LOGIC (MITOS.GOV.GR):\n"
-                f"   - **MANDATORY RULE:** IF the user asks about an administrative PROCEDURE (e.g. certificates, marriage, birth act, transfers).\n"
-                f"     (Positive Keywords: 'Πιστοποιητικό', 'Βεβαίωση', 'Άδεια', 'Γάμος', 'Ληξιαρχείο', 'Δημοτολόγιο', 'Μεταδημότευση', 'Αίτηση', 'Δικαιολογητικά')\n"
-                f"     THEN YOU MUST append this exact phrase at the very end: "
-                f"     '\n\nΓια περισσότερες πληροφορίες μπορείτε να επισκεφθείτε και το mitos: https://mitos.gov.gr'.\n"
-                f"   - **NEGATIVE RULE:** IF the user asks for GENERAL INFO, CONTACT DETAILS, or TOURISM (e.g. phones, email, address, hours, mayor, sightseeing).\n"
-                f"     (Negative Keywords: 'Τηλέφωνο', 'Email', 'Διεύθυνση', 'Ωράριο', 'Πού είναι', 'Δήμαρχος', 'Αξιοθέατα', 'Επικοινωνία')\n"
-                f"     THEN **DO NOT** append the mitos link.\n"
-                f"   - NEVER duplicate the 'mitos.gov.gr' link if it is already in the text.\n\n"
+                f"2. Use the provided CONTEXT (Standard Info + Database) to answer.\n"
+                f"3. **CRITICAL:** If you find the answer in the context, DO NOT say 'Unfortunately I don't know'. Just give the answer.\n"
+                f"4. **COUNTING:** If the user asks for a specific number of items (e.g. '3 places'), select exactly that many from the context.\n"
+                f"5. **MUNICIPAL LINKS:** If the context provided contains a specific link to 'korinthos.gr' (e.g. for Birth Acts, Registry, Marriage), YOU MUST INCLUDE IT in your response.\n"
+                f"6. **MITOS LOGIC:**\n"
+                f"   - **YES:** IF the user asks about an administrative PROCEDURE (Certificates, Registry, Marriage, Transfers).\n"
+                f"     THEN append: '\n\nΓια περισσότερες πληροφορίες μπορείτε να επισκεφθείτε και το mitos: https://mitos.gov.gr'.\n"
+                f"   - **NO:** IF the user asks for PHONES, HISTORY, SIGHTS, MAYOR, or DEYA.\n"
+                f"     THEN **DO NOT** append the mitos link.\n\n"
                 f"CONTEXT:\n{all_context}"
             )
             
@@ -569,6 +544,3 @@ async def clear_all_data():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-# Force update 1
