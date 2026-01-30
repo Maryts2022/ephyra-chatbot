@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Static Links + Smart Counting + Strict Logic
+Final Version: Fixed Deputy Mayor Priority + Mandatory Municipal Links
 """
 
 import os
@@ -189,37 +189,26 @@ log.info("✅ AI Model Loaded & Ready!")
 def get_embedder():
     return global_embedder
 
-# --- STATIC KNOWLEDGE (Το "Σκονάκι" του Bot) ---
-# Εδώ βάζουμε ΟΛΑ τα links και τις πληροφορίες που θέλουμε να είναι ΣΙΓΟΥΡΕΣ.
+# --- STATIC KNOWLEDGE ---
 STATIC_KNOWLEDGE = """
-[STANDARD MUNICIPAL INFO & LINKS]
+[STANDARD MUNICIPAL INFO]
 
 1. ΔΕΥΑ Κορίνθου (Ύδρευση/Αποχέτευση):
    - Τηλέφωνο Βλαβών (24ωρο): 6936776041
    - Τηλεφωνικό Κέντρο: 2741024444
    - Email: info@deyakor.gr
-   - (Σημείωση: Στις βλάβες ΔΕΝ βάζουμε link Mitos).
 
 2. Ιστορία:
    - Η Κόρινθος καταστράφηκε από μεγάλους σεισμούς το 1858 και το 1928.
    - Μετά τον σεισμό του 1858, η πόλη μεταφέρθηκε στη σημερινή της θέση (Νέα Κόρινθος).
 
-3. Τουρισμός - Αξιοθέατα (Λίστα για επιλογή):
+3. Τουρισμός - Αξιοθέατα (Πηγή για επιλογή):
    - Αρχαία Κόρινθος & Αρχαιολογικό Μουσείο.
    - Ακροκόρινθος (Κάστρο).
    - Διώρυγα της Κορίνθου (Ισθμός).
    - Παραλία Καλάμια (Κέντρο πόλης).
    - Παραλία Λουτρά Ωραίας Ελένης.
    - Λαογραφικό Μουσείο Κορίνθου.
-
-4. Διοίκηση:
-   - Αντιδήμαρχος Καθαριότητας: Δ. Μανωλάκης (Τηλ: 2741361000).
-
-5. ΣΥΝΔΕΣΜΟΙ ΔΗΜΟΥ (MUNICIPAL LINKS) - ΝΑ ΧΡΗΣΙΜΟΠΟΙΟΥΝΤΑΙ ΠΑΝΤΑ:
-   - Για Ληξιαρχικές Πράξεις (Γέννησης, Θανάτου, Γάμου): https://korinthos.gr/odhgos-polith/vasikes-uphresies/lhksiarxeio/
-   - Για Πιστοποιητικά (Γέννησης, Οικ. Κατάστασης, Εντοπιότητας): https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/
-   - Για Μεταδημότευση: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/metadhmoteysh/
-   - Για Πολιτικούς Γάμους: https://korinthos.gr/odhgos-polith/vasikes-uphresies/politiki-gamoi/
 """
 
 def get_direct_answer(question: str) -> Optional[Dict]:
@@ -237,9 +226,39 @@ def get_direct_answer(question: str) -> Optional[Dict]:
 Πληκτρολογήστε την ερώτησή σας!""",
             "quality": "direct_match"
         }
+
+    # --- 2. DEPUTY MAYORS (ΠΡΟΤΕΡΑΙΟΤΗΤΑ) ---
+    # Ελέγχουμε ΠΡΩΤΑ για Αντιδημάρχους για να μην μπερδευτεί με τον Δήμαρχο
+    if 'deputy mayor' in text_lower or 'vice mayor' in text_lower or 'αντιδήμαρχ' in text_lower or 'αντιδημαρχ' in text_lower:
+        
+        # Ειδικές περιπτώσεις
+        if 'καθαριότ' in text_lower or 'καθαριοτ' in text_lower:
+             return {"answer": "Αντιδήμαρχος Καθαριότητας: κ. Δημήτριος Μανωλάκης (Τηλ: 2741361000)", "quality": "direct_match"}
+        if 'τουρισμ' in text_lower or 'παιδεία' in text_lower:
+             return {"answer": "Αντιδήμαρχος Παιδείας & Τουρισμού: κ. Ευάγγελος Παπαϊωάννου", "quality": "direct_match"}
+        if 'τεχνικ' in text_lower:
+             return {"answer": "Αντιδήμαρχος Τεχνικών Υπηρεσιών: κ. Ανδρέας Ζώγκος", "quality": "direct_match"}
+        if 'πολιτισμ' in text_lower:
+             return {"answer": "Αντιδήμαρχος Πολιτισμού: κ. Αναστάσιος Ταγαράς", "quality": "direct_match"}
+        if 'πολεοδομ' in text_lower:
+             return {"answer": "Αντιδήμαρχος Πολεοδομίας: κ. Βασίλειος Πανταζής", "quality": "direct_match"}
+        if 'διοικητ' in text_lower:
+             return {"answer": "Αντιδήμαρχος Διοικητικών Υπηρεσιών: κ. Γεώργιος Πούρος", "quality": "direct_match"}
+
+        # Γενική λίστα αν δεν ζητήθηκε συγκεκριμένος
+        return {
+            "answer": """Οι Αντιδήμαρχοι είναι:
+1. Γ. Πούρος (Διοικητικών)
+2. Β. Πανταζής (Πολεοδομίας)
+3. Δ. Μανωλάκης (Καθαριότητας)
+4. Ε. Παπαϊωάννου (Παιδείας/Τουρισμού)
+5. Α. Ζώγκος (Τεχνικών)
+6. Α. Ταγαράς (Πολιτισμού)""",
+            "quality": "direct_match"
+        }
     
-    # --- 2. LOCATION ---
-    if any(kw in text_lower for kw in ['mayor', 'municipal', 'town hall', 'δημαρχείο', 'δήμαρχος']):
+    # --- 3. MAYOR & LOCATION (Μόνο αν δεν είναι Αντιδήμαρχος) ---
+    if any(kw in text_lower for kw in ['mayor', 'municipal', 'town hall', 'δημαρχείο', 'δήμαρχος', 'δημαρχο']):
         return {
             "answer": """Δημαρχείο Κορινθίων:
 Δήμαρχος: **Νίκος Σταυρέλης**
@@ -269,7 +288,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.13.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.15.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -363,7 +382,7 @@ async def ask(request: Request, body: AskBody):
                 if detected == 'en': target_lang = 'en'
         except: pass
 
-    # 2. DIRECT ANSWER (Minimal)
+    # 2. DIRECT ANSWER (Deputy Mayors Priority!)
     direct_resp = get_direct_answer(question)
     if direct_resp:
         async def direct_stream():
@@ -390,23 +409,23 @@ async def ask(request: Request, body: AskBody):
             db_text = "\n".join([f"Info: {d['question']} - {d['answer']}" for d in db_docs])
             cursor.close()
             
-            # --- COMBINE CONTEXT ---
             all_context = STATIC_KNOWLEDGE + "\n" + csv_context + "\n" + db_text
             
-            # 4. FINAL SYSTEM PROMPT
+            # 4. SYSTEM PROMPT WITH FORCED LINKS 📜
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
                 f"1. You MUST answer in the same language as the user's last message ({target_lang}).\n"
                 f"2. Use the provided CONTEXT (Standard Info + Database) to answer.\n"
-                f"3. **CRITICAL:** If you find the answer in the context, DO NOT say 'Unfortunately I don't know'. Just give the answer.\n"
-                f"4. **COUNTING:** If the user asks for a specific number of items (e.g. '3 places'), select exactly that many from the context.\n"
-                f"5. **MUNICIPAL LINKS:** If the context provided contains a specific link to 'korinthos.gr' (e.g. for Birth Acts, Registry, Marriage), YOU MUST INCLUDE IT in your response.\n"
-                f"6. **MITOS LOGIC:**\n"
-                f"   - **YES:** IF the user asks about an administrative PROCEDURE (Certificates, Registry, Marriage, Transfers).\n"
-                f"     THEN append: '\n\nΓια περισσότερες πληροφορίες μπορείτε να επισκεφθείτε και το mitos: https://mitos.gov.gr'.\n"
-                f"   - **NO:** IF the user asks for PHONES, HISTORY, SIGHTS, MAYOR, or DEYA.\n"
-                f"     THEN **DO NOT** append the mitos link.\n\n"
+                f"3. **COUNTING:** If the user asks for a specific number of items (e.g. '3 places'), select exactly that many from the context.\n"
+                f"4. **MUNICIPAL LINKS (MANDATORY RULE):**\n"
+                f"   - IF topic is **Registry / Birth Acts / Death Acts / Marriage Acts (Ληξιαρχείο)** -> YOU MUST Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/lhksiarxeio/'\n"
+                f"   - IF topic is **Certificates / Family Status / Birth Cert / Locality (Δημοτολόγιο)** -> YOU MUST Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/'\n"
+                f"   - IF topic is **Civil Marriage (Πολιτικός Γάμος)** -> YOU MUST Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/politiki-gamoi/'\n"
+                f"   - IF topic is **Transfer / Election Rights (Μεταδημότευση)** -> YOU MUST Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/metadhmoteysh/'\n"
+                f"5. **MITOS LOGIC (PRIORITY 2):**\n"
+                f"   - IF the topic is a PROCEDURE (as defined above), ALSO append: '\nΓια περισσότερες πληροφορίες μπορείτε να επισκεφθείτε και το mitos: https://mitos.gov.gr'.\n"
+                f"   - **NEGATIVE RULE:** IF asking for GENERAL INFO (Phones, History, Sights, Mayor, DEYA), DO NOT append the mitos link.\n\n"
                 f"CONTEXT:\n{all_context}"
             )
             
