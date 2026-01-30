@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Smart MITOS Link (Procedures ONLY)
+Final Version: Smart MITOS Link (Enhanced for Greek Procedures)
 """
 
 import os
@@ -191,7 +191,6 @@ def get_embedder():
 
 def get_direct_answer(question: str) -> Optional[Dict]:
     """Returns hardcoded answers with strict English/Greek support."""
-    # ΣΗΜΕΙΩΣΗ: Αφαιρέσαμε τα Links από εδώ για να μην μπαίνουν στις γενικές πληροφορίες!
     text_lower = question.lower().strip()
     
     # --- 1. SOCIAL MEDIA ---
@@ -318,7 +317,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.8.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.9.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -441,7 +440,7 @@ async def ask(request: Request, body: AskBody):
             all_context = csv_context + "\n" + db_text
             
             # 4. VERY STRICT & SMART SYSTEM PROMPT 🧠
-            # Η Εξυπνάδα: Διαχωρίζει τις Διαδικασίες από τις Πληροφορίες!
+            # ΠΡΟΣΘΗΚΗ: Λέξεις κλειδιά στα Ελληνικά για να μην το χάνει!
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
@@ -452,11 +451,12 @@ async def ask(request: Request, body: AskBody):
                 f"or 'Unfortunately, I do not have this information in my database.' (if English).\n"
                 f"4. Do not hallucinate facts.\n"
                 f"5. LINKING LOGIC (MITOS.GOV.GR):\n"
-                f"   - IF the user asks about an administrative PROCEDURE (e.g. issuing certificates, marriage license, birth act, permits), "
-                f"     THEN append this link at the end: 'https://mitos.gov.gr'.\n"
-                f"   - IF the user asks for GENERAL INFO (e.g. history, mayor's name, phone numbers, location, opening hours), "
-                f"     THEN DO NOT append the link.\n"
-                f"   - NEVER duplicate the link if it is already in the text.\n\n"
+                f"   - **MANDATORY RULE:** IF the user asks about an administrative PROCEDURE. \n"
+                f"     (Keywords: 'Πιστοποιητικό', 'Βεβαίωση', 'Άδεια', 'Γάμος', 'Ληξιαρχείο', 'Δημοτολόγιο', 'Μεταδημότευση', 'Αίτηση', 'Δικαιολογητικά', 'Certificate', 'Application', 'Marriage')\n"
+                f"     THEN YOU MUST append this link at the very end: 'https://mitos.gov.gr'.\n"
+                f"   - **Even if the context provides a specific 'korinthos.gr' link, you MUST ALSO append 'mitos.gov.gr' for these procedures.**\n"
+                f"   - IF the user asks for GENERAL INFO (e.g. history, mayor, phone numbers, location), THEN DO NOT append the link.\n"
+                f"   - NEVER duplicate the 'mitos.gov.gr' link if it is already in the text.\n\n"
                 f"CONTEXT:\n{all_context}"
             )
             
