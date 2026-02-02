@@ -60,13 +60,13 @@
     .stat-val { font-size: 28px; font-weight: 700; margin-bottom: 5px; }
     .stat-sub { font-size: 11px; color: #64748b; }
 
-    /* Charts Row - FIXED LAYOUT */
+    /* Charts Row */
     .charts-row {
       display: grid; 
       grid-template-columns: 2fr 1fr; 
       gap: 20px; 
       margin-bottom: 30px;
-      height: 400px; /* Σταθερό ύψος για όλη τη γραμμή */
+      height: 400px;
     }
     @media(max-width: 1000px) { 
         .charts-row { grid-template-columns: 1fr; height: auto; } 
@@ -79,18 +79,17 @@
       padding: 20px; 
       display: flex;
       flex-direction: column;
-      height: 100%; /* Γεμίζει το grid cell */
-      overflow: hidden; /* Κόβει ό,τι περισσεύει */
+      height: 100%;
+      overflow: hidden;
     }
     
     .chart-container h2 { font-size: 18px; margin-bottom: 15px; color: #e2e8f0; flex-shrink: 0; }
     
-    /* Το κλουβί του καμβά */
     .canvas-wrapper {
         position: relative;
         flex-grow: 1;
         width: 100%;
-        min-height: 0; /* Σημαντικό για flexbox scrolling */
+        min-height: 0;
     }
 
     /* Insights Row */
@@ -363,11 +362,13 @@
         tbody.innerHTML = '<tr><td colspan="22" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
         return;
     }
+    // ✨ ΕΔΩ ΕΜΦΑΝΙΖΕΤΑΙ Η ΝΕΑ ΤΙΜΗ (user_status)
     tbody.innerHTML = pageData.map(item => `
         <tr>
           <td>#${item.id}</td>
           <td style="font-size:11px; white-space:nowrap;">${formatToGreekTime(item.timestamp)}</td>
-          <td style="font-weight:bold; color:#10b981;">${item.user_status || '-'}</td> <td style="font-weight:500; color:#ffd700;">${item.scenarios_tested || item.scenarios || '-'}</td>
+          <td style="font-weight:bold; color:#10b981;">${item.user_status || '-'}</td> 
+          <td style="font-weight:500; color:#ffd700;">${item.scenarios_tested || item.scenarios || '-'}</td>
           <td style="font-size:12px">${item.gender || '-'}</td>
           <td style="font-size:12px">${item.age || '-'}</td>
           <td class="q-cell">${item.q1||'-'}</td><td class="q-cell">${item.q2||'-'}</td>
@@ -412,7 +413,7 @@
         },
         options: { 
           responsive: true, 
-          maintainAspectRatio: false, // <-- Η ΔΙΟΡΘΩΣΗ: Γεμίζει το κουτί χωρίς να ξεχειλώνει
+          maintainAspectRatio: false, 
           plugins: { legend: {display:false} }, 
           scales: { 
             x: {grid: {display:false}, ticks:{color:'#94a3b8'}}, 
@@ -437,7 +438,7 @@
         },
         options: { 
             responsive: true, 
-            maintainAspectRatio: false, // <-- Η ΔΙΟΡΘΩΣΗ: Κρατάει την πίτα μέσα στο πλαίσιο
+            maintainAspectRatio: false, 
             plugins: { legend: {position:'bottom', labels:{color:'#fff', boxWidth: 12}} } 
         }
       });
