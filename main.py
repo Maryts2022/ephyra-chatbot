@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Fixed Deputy Mayor Priority + Mandatory Municipal Links
+Final Version: Added User Status to Survey
 """
 
 import os
@@ -116,12 +116,13 @@ def init_all_tables():
                 ip_address TEXT
             );
         """)
+        # ✨ UPDATE: Changed table name to force new schema with user_status
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS survey_final (
+            CREATE TABLE IF NOT EXISTS survey_final_v2 (
                 id SERIAL PRIMARY KEY,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 used_bot TEXT,
-                usage_context TEXT,
+                user_status TEXT,
                 scenarios_tested TEXT,
                 gender TEXT,
                 age TEXT,
@@ -228,10 +229,8 @@ def get_direct_answer(question: str) -> Optional[Dict]:
         }
 
     # --- 2. DEPUTY MAYORS (ΠΡΟΤΕΡΑΙΟΤΗΤΑ) ---
-    # Ελέγχουμε ΠΡΩΤΑ για Αντιδημάρχους για να μην μπερδευτεί με τον Δήμαρχο
     if 'deputy mayor' in text_lower or 'vice mayor' in text_lower or 'αντιδήμαρχ' in text_lower or 'αντιδημαρχ' in text_lower:
         
-        # Ειδικές περιπτώσεις
         if 'καθαριότ' in text_lower or 'καθαριοτ' in text_lower:
              return {"answer": "Αντιδήμαρχος Καθαριότητας: κ. Δημήτριος Μανωλάκης (Τηλ: 2741361000)", "quality": "direct_match"}
         if 'τουρισμ' in text_lower or 'παιδεία' in text_lower:
@@ -245,7 +244,6 @@ def get_direct_answer(question: str) -> Optional[Dict]:
         if 'διοικητ' in text_lower:
              return {"answer": "Αντιδήμαρχος Διοικητικών Υπηρεσιών: κ. Γεώργιος Πούρος", "quality": "direct_match"}
 
-        # Γενική λίστα αν δεν ζητήθηκε συγκεκριμένος
         return {
             "answer": """Οι Αντιδήμαρχοι είναι:
 1. Γ. Πούρος (Διοικητικών)
@@ -257,7 +255,7 @@ def get_direct_answer(question: str) -> Optional[Dict]:
             "quality": "direct_match"
         }
     
-    # --- 3. MAYOR & LOCATION (Μόνο αν δεν είναι Αντιδήμαρχος) ---
+    # --- 3. MAYOR & LOCATION ---
     if any(kw in text_lower for kw in ['mayor', 'municipal', 'town hall', 'δημαρχείο', 'δήμαρχος', 'δημαρχο']):
         return {
             "answer": """Δημαρχείο Κορινθίων:
@@ -320,9 +318,10 @@ class AskBody(BaseModel):
 class TTSBody(BaseModel):
     text: str
 
+# ✨ UPDATE: Added userStatus field
 class SurveyResponse(BaseModel):
     usedBot: str
-    usageContext: str
+    userStatus: Optional[str] = "N/A"  # <-- ΝΕΟ ΠΕΔΙΟ
     scenarios: str
     gender: Optional[str] = "N/A"
     age: Optional[str] = "N/A"
@@ -364,36 +363,29 @@ async def get_questionnaire():
 @app.post("/ask")
 @limiter.limit("30/minute")
 async def ask(request: Request, body: AskBody):
-    # Default lang from button
     target_lang = body.lang or "el"
     question = (body.messages[-1].content if body.messages else "").strip()
     if not question: return {"answer": "..."}
 
-    # 1. LANGUAGE DETECTION
+    # 1. LANG DETECT
     english_keywords = {'hello', 'hi', 'where', 'municipal', 'mayor', 'thank', 'when', 'what', 'how', 'who'}
     question_words = set(re.sub(r'[^\w\s]', '', question.lower()).split())
-    
-    if any(word in question_words for word in english_keywords):
-        target_lang = 'en'
+    if any(word in question_words for word in english_keywords): target_lang = 'en'
     else:
         try:
             if len(question) > 3:
-                detected = detect(question)
-                if detected == 'en': target_lang = 'en'
+                if detect(question) == 'en': target_lang = 'en'
         except: pass
 
-    # 2. DIRECT ANSWER (Deputy Mayors Priority!)
+    # 2. DIRECT ANSWER
     direct_resp = get_direct_answer(question)
     if direct_resp:
-        async def direct_stream():
-            yield direct_resp["answer"]
+        async def direct_stream(): yield direct_resp["answer"]
         return StreamingResponse(direct_stream(), media_type="text/plain")
 
-    # 3. RAG Search
+    # 3. RAG SEARCH
     csv_context = ""
-    def clean_text(t):
-        if not t: return ""
-        return t.lower().translate(str.maketrans('', '', string.punctuation)).strip()
+    def clean_text(t): return t.lower().translate(str.maketrans('', '', string.punctuation)).strip() if t else ""
     clean_user_q = clean_text(question)
     for row in knowledge_base:
         if len(row) >= 2:
@@ -411,36 +403,31 @@ async def ask(request: Request, body: AskBody):
             
             all_context = STATIC_KNOWLEDGE + "\n" + csv_context + "\n" + db_text
             
-            # 4. SYSTEM PROMPT WITH FORCED LINKS 📜
+            # 4. SYSTEM PROMPT
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
                 f"1. You MUST answer in the same language as the user's last message ({target_lang}).\n"
                 f"2. Use the provided CONTEXT (Standard Info + Database) to answer.\n"
-                f"3. **COUNTING:** If the user asks for a specific number of items (e.g. '3 places'), select exactly that many from the context.\n"
-                f"4. **MUNICIPAL LINKS (MANDATORY RULE):**\n"
-                f"   - IF topic is **Registry / Birth Acts / Death Acts / Marriage Acts (Ληξιαρχείο)** -> YOU MUST Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/lhksiarxeio/'\n"
-                f"   - IF topic is **Certificates / Family Status / Birth Cert / Locality (Δημοτολόγιο)** -> YOU MUST Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/'\n"
-                f"   - IF topic is **Civil Marriage (Πολιτικός Γάμος)** -> YOU MUST Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/politiki-gamoi/'\n"
-                f"   - IF topic is **Transfer / Election Rights (Μεταδημότευση)** -> YOU MUST Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/metadhmoteysh/'\n"
-                f"5. **MITOS LOGIC (PRIORITY 2):**\n"
-                f"   - IF the topic is a PROCEDURE (as defined above), ALSO append: '\nΓια περισσότερες πληροφορίες μπορείτε να επισκεφθείτε και το mitos: https://mitos.gov.gr'.\n"
-                f"   - **NEGATIVE RULE:** IF asking for GENERAL INFO (Phones, History, Sights, Mayor, DEYA), DO NOT append the mitos link.\n\n"
+                f"3. **COUNTING:** If the user asks for a specific number of items (e.g. '3 places'), select exactly that many.\n"
+                f"4. **MUNICIPAL LINKS (MANDATORY):**\n"
+                f"   - IF topic is **Registry / Birth Acts / Death Acts / Marriage Acts (Ληξιαρχείο)** -> Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/lhksiarxeio/'\n"
+                f"   - IF topic is **Certificates / Family Status / Birth Cert (Δημοτολόγιο)** -> Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/'\n"
+                f"   - IF topic is **Civil Marriage (Πολιτικός Γάμος)** -> Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/politiki-gamoi/'\n"
+                f"   - IF topic is **Transfer (Μεταδημότευση)** -> Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/metadhmoteysh/'\n"
+                f"5. **MITOS LOGIC:**\n"
+                f"   - IF topic is a PROCEDURE, append: '\nΓια περισσότερες πληροφορίες μπορείτε να επισκεφθείτε και το mitos: https://mitos.gov.gr'.\n"
+                f"   - **NEGATIVE:** IF asking for PHONES, HISTORY, SIGHTS, MAYOR, DEYA -> DO NOT append mitos.\n\n"
                 f"CONTEXT:\n{all_context}"
             )
             
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": sys_msg},
-                    {"role": "user", "content": question}
-                ],
-                temperature=0.3,
-                stream=True
+                messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": question}],
+                temperature=0.3, stream=True
             )
             for chunk in response:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+                if chunk.choices[0].delta.content: yield chunk.choices[0].delta.content
         except Exception as e:
             log.error(f"Stream Error: {e}")
             yield "Sorry, connection error."
@@ -449,7 +436,6 @@ async def ask(request: Request, body: AskBody):
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
-# --- FEEDBACK & STATS ---
 @app.post("/feedback")
 async def record_feedback(request: Request):
     try:
@@ -466,28 +452,19 @@ async def get_feedback_stats(days: int = 30):
     conn = get_db_conn(); cur = conn.cursor()
     try:
         since_date = datetime.now() - timedelta(days=days)
-        # Total
-        cur.execute("""
-            SELECT COUNT(*), SUM(CASE WHEN is_positive THEN 1 ELSE 0 END),
-                   SUM(CASE WHEN is_positive THEN 0 ELSE 1 END), COUNT(DISTINCT ip_address)
-            FROM chatbot_feedback WHERE timestamp >= %s
-        """, (since_date,))
+        cur.execute("SELECT COUNT(*), SUM(CASE WHEN is_positive THEN 1 ELSE 0 END), SUM(CASE WHEN is_positive THEN 0 ELSE 1 END), COUNT(DISTINCT ip_address) FROM chatbot_feedback WHERE timestamp >= %s", (since_date,))
         r = cur.fetchone()
         total, pos, neg, unique = r[0] or 0, r[1] or 0, r[2] or 0, r[3] or 0
         
-        # Daily
         cur.execute("SELECT DATE(timestamp), is_positive, COUNT(*) FROM chatbot_feedback WHERE timestamp >= %s GROUP BY DATE(timestamp), is_positive ORDER BY 1", (since_date,))
         daily = [{"date": str(row[0]), "sentiment": "positive" if row[1] else "negative", "count": row[2]} for row in cur.fetchall()]
         
-        # Recent
         cur.execute("SELECT id, user_question, bot_response, is_positive, timestamp FROM chatbot_feedback WHERE timestamp >= %s ORDER BY timestamp DESC LIMIT 20", (since_date,))
         recent = [{"id":r[0], "user_question":r[1], "bot_response":r[2], "is_positive":r[3], "timestamp":str(r[4])} for r in cur.fetchall()]
 
-        # Top Qs
         cur.execute("SELECT user_question, COUNT(*) as c FROM chatbot_feedback WHERE timestamp >= %s GROUP BY user_question ORDER BY c DESC LIMIT 5", (since_date,))
         top_qs = [{"question": r[0], "count": r[1]} for r in cur.fetchall()]
 
-        # Language Distribution (Fix)
         cur.execute("SELECT user_question FROM chatbot_feedback WHERE timestamp >= %s", (since_date,))
         el_c, en_c = 0, 0
         for row in cur.fetchall():
@@ -496,12 +473,7 @@ async def get_feedback_stats(days: int = 30):
             if any('\u0370' <= c <= '\u03ff' or '\u1f00' <= c <= '\u1fff' for c in txt): el_c += 1
             else: en_c += 1
 
-        return {
-            "total_feedback": total, "positive": pos, "negative": neg,
-            "satisfaction_rate": round((pos/total*100)) if total>0 else 0,
-            "unique_users": unique, "daily_data": daily, "recent_feedback": recent,
-            "top_questions": top_qs, "language_distribution": {"el": el_c, "en": en_c}
-        }
+        return {"total_feedback": total, "positive": pos, "negative": neg, "satisfaction_rate": round((pos/total*100)) if total>0 else 0, "unique_users": unique, "daily_data": daily, "recent_feedback": recent, "top_questions": top_qs, "language_distribution": {"el": el_c, "en": en_c}}
     except Exception as e: return {"error": str(e)}
     finally: cur.close(); return_db_conn(conn)
 
@@ -509,13 +481,14 @@ async def get_feedback_stats(days: int = 30):
 async def submit_survey(data: SurveyResponse):
     try:
         conn = get_db_conn(); cur = conn.cursor()
+        # ✨ UPDATE: Saving to survey_final_v2 with user_status
         cur.execute("""
-            INSERT INTO survey_final 
-            (used_bot, usage_context, scenarios_tested, gender, age, 
+            INSERT INTO survey_final_v2 
+            (used_bot, user_status, scenarios_tested, gender, age, 
              q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, 
              q11, q12, q13, q14, q15, q16, comments)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (data.usedBot, data.usageContext, data.scenarios, data.gender, data.age, data.q1, data.q2, data.q3, data.q4, data.q5, data.q6, data.q7, data.q8, data.q9, data.q10, data.q11, data.q12, data.q13, data.q14, data.q15, data.q16, data.comments))
+        """, (data.usedBot, data.userStatus, data.scenarios, data.gender, data.age, data.q1, data.q2, data.q3, data.q4, data.q5, data.q6, data.q7, data.q8, data.q9, data.q10, data.q11, data.q12, data.q13, data.q14, data.q15, data.q16, data.comments))
         conn.commit(); cur.close(); return_db_conn(conn)
         return {"status": "success"}
     except Exception as e: return {"error": str(e)}
@@ -524,7 +497,7 @@ async def submit_survey(data: SurveyResponse):
 async def get_survey_results():
     try:
         conn = get_db_conn(); cur = conn.cursor()
-        cur.execute("SELECT * FROM survey_final ORDER BY timestamp DESC")
+        cur.execute("SELECT * FROM survey_final_v2 ORDER BY timestamp DESC")
         cols = [desc[0] for desc in cur.description]
         results = [dict(zip(cols, row)) for row in cur.fetchall()]
         for r in results:
@@ -554,7 +527,7 @@ async def clear_all_data():
     try:
         cur = conn.cursor()
         cur.execute("TRUNCATE TABLE chatbot_feedback;")
-        cur.execute("TRUNCATE TABLE survey_final;")
+        cur.execute("TRUNCATE TABLE survey_final_v2;")
         conn.commit(); cur.close()
         return {"status": "success"}
     except Exception as e: return {"error": str(e)}

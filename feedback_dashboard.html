@@ -232,7 +232,7 @@
           <tr>
             <th>ID</th>
             <th>Date</th>
-            <th>Σενάρια</th>
+            <th>Ιδιότητα</th> <th>Σενάρια</th>
             <th>Φύλο</th>
             <th>Ηλικία</th>
             <th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Q5</th>
@@ -242,7 +242,7 @@
           </tr>
         </thead>
         <tbody id="surveyTableBody">
-          <tr><td colspan="18" style="text-align:center; padding:20px;">Φόρτωση...</td></tr>
+          <tr><td colspan="22" style="text-align:center; padding:20px;">Φόρτωση...</td></tr>
         </tbody>
       </table>
     </div>
@@ -367,7 +367,7 @@
         <tr>
           <td>#${item.id}</td>
           <td style="font-size:11px; white-space:nowrap;">${formatToGreekTime(item.timestamp)}</td>
-          <td style="font-weight:500; color:#ffd700;">${item.scenarios_tested || item.scenarios || '-'}</td>
+          <td style="font-weight:bold; color:#10b981;">${item.user_status || '-'}</td> <td style="font-weight:500; color:#ffd700;">${item.scenarios_tested || item.scenarios || '-'}</td>
           <td style="font-size:12px">${item.gender || '-'}</td>
           <td style="font-size:12px">${item.age || '-'}</td>
           <td class="q-cell">${item.q1||'-'}</td><td class="q-cell">${item.q2||'-'}</td>
