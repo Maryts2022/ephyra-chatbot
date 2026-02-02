@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Added User Status to Survey
+Final Version: List ALL Sights + DB Fix + Strict Links
 """
 
 import os
@@ -116,7 +116,7 @@ def init_all_tables():
                 ip_address TEXT
             );
         """)
-        # ✨ UPDATE: Changed table name to force new schema with user_status
+        # Table with user_status
         cur.execute("""
             CREATE TABLE IF NOT EXISTS survey_final_v2 (
                 id SERIAL PRIMARY KEY,
@@ -203,13 +203,14 @@ STATIC_KNOWLEDGE = """
    - Η Κόρινθος καταστράφηκε από μεγάλους σεισμούς το 1858 και το 1928.
    - Μετά τον σεισμό του 1858, η πόλη μεταφέρθηκε στη σημερινή της θέση (Νέα Κόρινθος).
 
-3. Τουρισμός - Αξιοθέατα (Πηγή για επιλογή):
+3. Τουρισμός - Αξιοθέατα (ΟΛΑ τα διαθέσιμα):
    - Αρχαία Κόρινθος & Αρχαιολογικό Μουσείο.
    - Ακροκόρινθος (Κάστρο).
    - Διώρυγα της Κορίνθου (Ισθμός).
    - Παραλία Καλάμια (Κέντρο πόλης).
    - Παραλία Λουτρά Ωραίας Ελένης.
    - Λαογραφικό Μουσείο Κορίνθου.
+   - Ιερός Ναός Αποστόλου Παύλου.
 """
 
 def get_direct_answer(question: str) -> Optional[Dict]:
@@ -286,7 +287,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.15.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.17.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -318,10 +319,9 @@ class AskBody(BaseModel):
 class TTSBody(BaseModel):
     text: str
 
-# ✨ UPDATE: Added userStatus field
 class SurveyResponse(BaseModel):
     usedBot: str
-    userStatus: Optional[str] = "N/A"  # <-- ΝΕΟ ΠΕΔΙΟ
+    userStatus: Optional[str] = "N/A"
     scenarios: str
     gender: Optional[str] = "N/A"
     age: Optional[str] = "N/A"
@@ -403,19 +403,22 @@ async def ask(request: Request, body: AskBody):
             
             all_context = STATIC_KNOWLEDGE + "\n" + csv_context + "\n" + db_text
             
-            # 4. SYSTEM PROMPT
+            # 4. SYSTEM PROMPT WITH LISTING LOGIC & STRICT RULES 📜
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
                 f"1. You MUST answer in the same language as the user's last message ({target_lang}).\n"
-                f"2. Use the provided CONTEXT (Standard Info + Database) to answer.\n"
-                f"3. **COUNTING:** If the user asks for a specific number of items (e.g. '3 places'), select exactly that many.\n"
-                f"4. **MUNICIPAL LINKS (MANDATORY):**\n"
+                f"2. You answer questions **ONLY** based on the provided CONTEXT below. **Do NOT use your internal training data, general knowledge, or internet info.**\n"
+                f"3. **RESTRICTION:** If the user asks about general topics (e.g., gardening, cooking, world history, weather outside Corinth) that are NOT in the context, you MUST politely refuse.\n"
+                f"4. **LISTING RULES:**\n"
+                f"   - If the user asks for a SPECIFIC number (e.g. '3 places'), select exactly that many.\n"
+                f"   - If the user asks GENERALLY (e.g. 'What can I see?', 'Suggest sights'), you MUST list **ALL** available options found in the Context. Do not summarize or select only a few.\n"
+                f"5. **MUNICIPAL LINKS (MANDATORY):**\n"
                 f"   - IF topic is **Registry / Birth Acts / Death Acts / Marriage Acts (Ληξιαρχείο)** -> Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/lhksiarxeio/'\n"
                 f"   - IF topic is **Certificates / Family Status / Birth Cert (Δημοτολόγιο)** -> Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/'\n"
                 f"   - IF topic is **Civil Marriage (Πολιτικός Γάμος)** -> Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/politiki-gamoi/'\n"
                 f"   - IF topic is **Transfer (Μεταδημότευση)** -> Append: '\n🔗 Δήμος: https://korinthos.gr/odhgos-polith/vasikes-uphresies/dhmotologio/metadhmoteysh/'\n"
-                f"5. **MITOS LOGIC:**\n"
+                f"6. **MITOS LOGIC:**\n"
                 f"   - IF topic is a PROCEDURE, append: '\nΓια περισσότερες πληροφορίες μπορείτε να επισκεφθείτε και το mitos: https://mitos.gov.gr'.\n"
                 f"   - **NEGATIVE:** IF asking for PHONES, HISTORY, SIGHTS, MAYOR, DEYA -> DO NOT append mitos.\n\n"
                 f"CONTEXT:\n{all_context}"
@@ -481,7 +484,6 @@ async def get_feedback_stats(days: int = 30):
 async def submit_survey(data: SurveyResponse):
     try:
         conn = get_db_conn(); cur = conn.cursor()
-        # ✨ UPDATE: Saving to survey_final_v2 with user_status
         cur.execute("""
             INSERT INTO survey_final_v2 
             (used_bot, user_status, scenarios_tested, gender, age, 
