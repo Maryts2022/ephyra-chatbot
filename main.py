@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: List ALL Sights + DB Fix + Strict Links
+Final Version: Auto-Log Chats + All Sights + Strict Rules
 """
 
 import os
@@ -116,7 +116,6 @@ def init_all_tables():
                 ip_address TEXT
             );
         """)
-        # Table with user_status
         cur.execute("""
             CREATE TABLE IF NOT EXISTS survey_final_v2 (
                 id SERIAL PRIMARY KEY,
@@ -287,7 +286,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.17.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.18.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -315,6 +314,7 @@ class Message(BaseModel):
 class AskBody(BaseModel):
     messages: List[Message]
     lang: str = "el"
+    conversation_id: Optional[str] = None  # ✨ New field for auto-logging
 
 class TTSBody(BaseModel):
     text: str
@@ -331,7 +331,27 @@ class SurveyResponse(BaseModel):
     q16: int
     comments: Optional[str] = ""
 
-# ================== 8. Endpoints ==================
+# ================== 8. Helper: Auto-Log ==================
+
+def log_chat_interaction(conv_id, user_q, bot_ans, ip):
+    """Silently logs the chat turn to DB."""
+    if not conv_id: return
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        # Note: is_positive is NULL (None) initially
+        cur.execute(
+            "INSERT INTO chatbot_feedback (conversation_id, user_question, bot_response, is_positive, ip_address) VALUES (%s, %s, %s, %s, %s)",
+            (conv_id, user_q, bot_ans, None, ip)
+        )
+        conn.commit()
+        cur.close()
+        return_db_conn(conn)
+    except Exception as e:
+        log.error(f"Auto-log failed: {e}")
+        # Don't raise, just log error so chat continues
+
+# ================== 9. Endpoints ==================
 
 @app.get("/")
 async def root(background_tasks: BackgroundTasks):
@@ -366,6 +386,8 @@ async def ask(request: Request, body: AskBody):
     target_lang = body.lang or "el"
     question = (body.messages[-1].content if body.messages else "").strip()
     if not question: return {"answer": "..."}
+    
+    client_ip = request.client.host
 
     # 1. LANG DETECT
     english_keywords = {'hello', 'hi', 'where', 'municipal', 'mayor', 'thank', 'when', 'what', 'how', 'who'}
@@ -380,7 +402,12 @@ async def ask(request: Request, body: AskBody):
     # 2. DIRECT ANSWER
     direct_resp = get_direct_answer(question)
     if direct_resp:
-        async def direct_stream(): yield direct_resp["answer"]
+        async def direct_stream():
+            ans = direct_resp["answer"]
+            yield ans
+            # Auto-log for direct answers too
+            log_chat_interaction(body.conversation_id, question, ans, client_ip)
+            
         return StreamingResponse(direct_stream(), media_type="text/plain")
 
     # 3. RAG SEARCH
@@ -395,6 +422,7 @@ async def ask(request: Request, body: AskBody):
 
     async def event_generator():
         conn = get_db_conn()
+        full_response_accumulator = "" # To capture the full answer
         try:
             cursor = conn.cursor()
             db_docs = retrieve_context(cursor, question, top_k=4)
@@ -430,7 +458,14 @@ async def ask(request: Request, body: AskBody):
                 temperature=0.3, stream=True
             )
             for chunk in response:
-                if chunk.choices[0].delta.content: yield chunk.choices[0].delta.content
+                if chunk.choices[0].delta.content:
+                    txt = chunk.choices[0].delta.content
+                    full_response_accumulator += txt
+                    yield txt
+            
+            # ✨ AUTO-LOGGING AFTER STREAM FINISHES
+            log_chat_interaction(body.conversation_id, question, full_response_accumulator, client_ip)
+
         except Exception as e:
             log.error(f"Stream Error: {e}")
             yield "Sorry, connection error."
@@ -444,6 +479,10 @@ async def record_feedback(request: Request):
     try:
         data = await request.json()
         conn = get_db_conn(); cur = conn.cursor()
+        # This endpoint is now used when user CLICKS thumbs up/down
+        # We INSERT a new row with sentiment. 
+        # (Alternatively we could UPDATE the existing row if we tracked IDs perfectly, 
+        # but INSERT is safer and simpler for this "surgical" update).
         cur.execute("INSERT INTO chatbot_feedback (conversation_id, bot_response, user_question, is_positive, user_agent, ip_address) VALUES (%s, %s, %s, %s, %s, %s)",
             (data.get("conversation_id"), data.get("bot_response"), data.get("user_question"), data.get("is_positive"), request.headers.get("User-Agent"), request.client.host))
         conn.commit(); cur.close(); return_db_conn(conn)

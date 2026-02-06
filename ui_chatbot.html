@@ -1484,7 +1484,8 @@ form.addEventListener('submit', async (e) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 messages: conversationHistory, 
-                lang: currentLang 
+                lang: currentLang,
+                conversation_id: sessionId // ✨ ΠΡΟΣΤΕΘΗΚΕ: Στέλνουμε το ID της συζήτησης για αυτόματη καταγραφή!
             })
         });
 

@@ -119,9 +119,13 @@
     tr:hover { background: rgba(255,255,255,0.02); }
     
     .q-cell { text-align: center; color: #3b82f6; font-weight: bold; }
+    
+    /* BADGES */
     .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
     .badge-pos { background: rgba(16, 185, 129, 0.2); color: #10b981; }
     .badge-neg { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    /* ✨ ΝΕΟ: Γκρι badge για τις ερωτήσεις χωρίς feedback */
+    .badge-neu { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
 
     /* Pagination */
     .pagination { display: flex; justify-content: flex-end; align-items: center; padding: 15px; gap: 15px; background: rgba(0,0,0,0.2); }
@@ -338,15 +342,25 @@
           tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Δεν υπάρχουν δεδομένα.</td></tr>';
           return;
       }
-      tbody.innerHTML = pageData.map(item => `
+      tbody.innerHTML = pageData.map(item => {
+        // ✨ ΛΟΓΙΚΗ ΓΙΑ ΤΑ BADGES (Θετικό, Αρνητικό, Ουδέτερο)
+        let feedbackBadge = '<span class="badge badge-neu">➖ Χωρίς σχόλιο</span>';
+        if (item.is_positive === true) {
+            feedbackBadge = '<span class="badge badge-pos">👍 Θετικό</span>';
+        } else if (item.is_positive === false) {
+            feedbackBadge = '<span class="badge badge-neg">👎 Αρνητικό</span>';
+        }
+
+        return `
         <tr>
           <td>#${item.id}</td>
           <td style="font-size:11px; white-space:nowrap;">${formatToGreekTime(item.timestamp)}</td>
           <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;">${item.user_question || '-'}</td>
           <td style="font-size:13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; color: #a0aec0;">${item.bot_response || '-'}</td>
-          <td>${item.is_positive ? '<span class="badge badge-pos">👍 Θετικό</span>' : '<span class="badge badge-neg">👎 Αρνητικό</span>'}</td>
+          <td>${feedbackBadge}</td>
         </tr>
-      `).join('');
+        `;
+      }).join('');
   }
 
   function renderSurveyTable() {
