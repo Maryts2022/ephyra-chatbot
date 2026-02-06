@@ -1,6 +1,6 @@
 """
 Ephyra Chatbot - Production RAG
-Final Version: Auto-Log Chats + All Sights + Strict Rules
+Final Version: Fixed Negative Stats Logic (Ignore Neutrals)
 """
 
 import os
@@ -286,7 +286,7 @@ def retrieve_context(cursor, question: str, top_k: int = 5) -> List[Dict]:
 
 # ================== 6. FastAPI App ==================
 
-app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.18.0")
+app = FastAPI(title="Ephyra Chatbot - Production RAG", version="3.19.0")
 
 try:
     static_dir = os.path.dirname(os.path.abspath(__file__))
@@ -314,7 +314,7 @@ class Message(BaseModel):
 class AskBody(BaseModel):
     messages: List[Message]
     lang: str = "el"
-    conversation_id: Optional[str] = None  # ✨ New field for auto-logging
+    conversation_id: Optional[str] = None 
 
 class TTSBody(BaseModel):
     text: str
@@ -339,7 +339,6 @@ def log_chat_interaction(conv_id, user_q, bot_ans, ip):
     try:
         conn = get_db_conn()
         cur = conn.cursor()
-        # Note: is_positive is NULL (None) initially
         cur.execute(
             "INSERT INTO chatbot_feedback (conversation_id, user_question, bot_response, is_positive, ip_address) VALUES (%s, %s, %s, %s, %s)",
             (conv_id, user_q, bot_ans, None, ip)
@@ -349,7 +348,6 @@ def log_chat_interaction(conv_id, user_q, bot_ans, ip):
         return_db_conn(conn)
     except Exception as e:
         log.error(f"Auto-log failed: {e}")
-        # Don't raise, just log error so chat continues
 
 # ================== 9. Endpoints ==================
 
@@ -405,7 +403,6 @@ async def ask(request: Request, body: AskBody):
         async def direct_stream():
             ans = direct_resp["answer"]
             yield ans
-            # Auto-log for direct answers too
             log_chat_interaction(body.conversation_id, question, ans, client_ip)
             
         return StreamingResponse(direct_stream(), media_type="text/plain")
@@ -422,7 +419,7 @@ async def ask(request: Request, body: AskBody):
 
     async def event_generator():
         conn = get_db_conn()
-        full_response_accumulator = "" # To capture the full answer
+        full_response_accumulator = "" 
         try:
             cursor = conn.cursor()
             db_docs = retrieve_context(cursor, question, top_k=4)
@@ -431,7 +428,7 @@ async def ask(request: Request, body: AskBody):
             
             all_context = STATIC_KNOWLEDGE + "\n" + csv_context + "\n" + db_text
             
-            # 4. SYSTEM PROMPT WITH LISTING LOGIC & STRICT RULES 📜
+            # 4. SYSTEM PROMPT
             sys_msg = (
                 f"You are Ephyra, the AI assistant for the Municipality of Corinth. "
                 f"STRICT INSTRUCTIONS:\n"
@@ -463,7 +460,6 @@ async def ask(request: Request, body: AskBody):
                     full_response_accumulator += txt
                     yield txt
             
-            # ✨ AUTO-LOGGING AFTER STREAM FINISHES
             log_chat_interaction(body.conversation_id, question, full_response_accumulator, client_ip)
 
         except Exception as e:
@@ -479,10 +475,7 @@ async def record_feedback(request: Request):
     try:
         data = await request.json()
         conn = get_db_conn(); cur = conn.cursor()
-        # This endpoint is now used when user CLICKS thumbs up/down
-        # We INSERT a new row with sentiment. 
-        # (Alternatively we could UPDATE the existing row if we tracked IDs perfectly, 
-        # but INSERT is safer and simpler for this "surgical" update).
+        # This endpoint is when user CLICKS thumbs up/down
         cur.execute("INSERT INTO chatbot_feedback (conversation_id, bot_response, user_question, is_positive, user_agent, ip_address) VALUES (%s, %s, %s, %s, %s, %s)",
             (data.get("conversation_id"), data.get("bot_response"), data.get("user_question"), data.get("is_positive"), request.headers.get("User-Agent"), request.client.host))
         conn.commit(); cur.close(); return_db_conn(conn)
@@ -494,10 +487,26 @@ async def get_feedback_stats(days: int = 30):
     conn = get_db_conn(); cur = conn.cursor()
     try:
         since_date = datetime.now() - timedelta(days=days)
-        cur.execute("SELECT COUNT(*), SUM(CASE WHEN is_positive THEN 1 ELSE 0 END), SUM(CASE WHEN is_positive THEN 0 ELSE 1 END), COUNT(DISTINCT ip_address) FROM chatbot_feedback WHERE timestamp >= %s", (since_date,))
+        
+        # ✨ BUG FIX: 
+        # is_positive IS TRUE -> Positives
+        # is_positive IS FALSE -> Negatives (Excludes NULLs)
+        cur.execute("""
+            SELECT 
+                COUNT(*), 
+                SUM(CASE WHEN is_positive IS TRUE THEN 1 ELSE 0 END), 
+                SUM(CASE WHEN is_positive IS FALSE THEN 1 ELSE 0 END), 
+                COUNT(DISTINCT ip_address) 
+            FROM chatbot_feedback WHERE timestamp >= %s
+        """, (since_date,))
+        
         r = cur.fetchone()
         total, pos, neg, unique = r[0] or 0, r[1] or 0, r[2] or 0, r[3] or 0
         
+        # Satisfaction Rate logic: (Pos / (Pos + Neg)) * 100
+        rated_total = pos + neg
+        satisfaction_rate = round((pos/rated_total*100)) if rated_total > 0 else 0
+
         cur.execute("SELECT DATE(timestamp), is_positive, COUNT(*) FROM chatbot_feedback WHERE timestamp >= %s GROUP BY DATE(timestamp), is_positive ORDER BY 1", (since_date,))
         daily = [{"date": str(row[0]), "sentiment": "positive" if row[1] else "negative", "count": row[2]} for row in cur.fetchall()]
         
@@ -515,7 +524,17 @@ async def get_feedback_stats(days: int = 30):
             if any('\u0370' <= c <= '\u03ff' or '\u1f00' <= c <= '\u1fff' for c in txt): el_c += 1
             else: en_c += 1
 
-        return {"total_feedback": total, "positive": pos, "negative": neg, "satisfaction_rate": round((pos/total*100)) if total>0 else 0, "unique_users": unique, "daily_data": daily, "recent_feedback": recent, "top_questions": top_qs, "language_distribution": {"el": el_c, "en": en_c}}
+        return {
+            "total_feedback": total, 
+            "positive": pos, 
+            "negative": neg, 
+            "satisfaction_rate": satisfaction_rate, 
+            "unique_users": unique, 
+            "daily_data": daily, 
+            "recent_feedback": recent, 
+            "top_questions": top_qs, 
+            "language_distribution": {"el": el_c, "en": en_c}
+        }
     except Exception as e: return {"error": str(e)}
     finally: cur.close(); return_db_conn(conn)
 
